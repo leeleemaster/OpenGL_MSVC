@@ -1,0 +1,38 @@
+name: Windows Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-2022
+    env:
+      VCPKG_ROOT: C:\vcpkg
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: Debug
+            preset: msvc-debug
+          - configuration: Release
+            preset: msvc-release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake --preset msvc
+
+      - name: Build ${{ matrix.configuration }}
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test ${{ matrix.configuration }}
+        run: ctest --preset ${{ matrix.preset }}
