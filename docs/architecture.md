@@ -1,0 +1,39 @@
+# Architecture
+
+## Dependency direction
+
+```text
+DentalViz executable
+  -> app / ui / renderer / scene / io
+  -> dentalviz_core (geometry and shared domain types)
+
+dentalviz_tests
+  -> dentalviz_core
+```
+
+`dentalviz_core` must not require an OpenGL context. Geometry intersection, measurement,
+bounds, camera math that can be isolated, and the optional MiniShader compiler belong in
+testable code. OpenGL handles remain inside renderer-side RAII types.
+
+## Viewport decision
+
+P0 uses a fixed properties sidebar and renders the scene directly into the remaining
+framebuffer rectangle with `glViewport` and `glScissor`. This avoids an early framebuffer
+object dependency. Picking uses the same recorded rectangle and DPI conversion.
+
+An FBO-backed ImGui image viewport is a later refactor only if docking or multiple viewports
+becomes necessary.
+
+## Resource ownership
+
+- CPU mesh data owns positions, normals, indices, and bounds.
+- GPU mesh data owns VAO/VBO/EBO handles through move-only RAII objects.
+- Upload and draw are separate operations.
+- A shader replacement becomes active only after compile and link succeed.
+- UI communicates commands and state; it does not own renderer resources.
+
+## Release linkage
+
+The baseline vcpkg triplet is `x64-windows-static-md`: third-party libraries are statically
+linked while the MSVC runtime remains dynamically linked. This minimizes application DLL
+packaging while remaining compatible with the normal Visual C++ runtime deployment model.
