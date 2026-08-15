@@ -12,6 +12,9 @@ include(cmake/Warnings.cmake)
 
 option(DENTALVIZ_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+find_package(glad CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
+
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
 )
@@ -29,10 +32,17 @@ target_compile_definitions(dentalviz_core
 dentalviz_set_warnings(dentalviz_core)
 
 add_executable(DentalViz
+    src/app/Application.cpp
     src/main.cpp
 )
-target_link_libraries(DentalViz PRIVATE dentalviz_core)
+target_link_libraries(DentalViz
+    PRIVATE
+        dentalviz_core
+        glad::glad
+        glfw
+)
 target_compile_features(DentalViz PRIVATE cxx_std_20)
+target_compile_definitions(DentalViz PRIVATE GLFW_INCLUDE_NONE)
 dentalviz_set_warnings(DentalViz)
 
 if(BUILD_TESTING)

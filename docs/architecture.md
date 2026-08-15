@@ -34,6 +34,7 @@ becomes necessary.
 
 ## Release linkage
 
-The baseline vcpkg triplet is `x64-windows-static-md`: third-party libraries are statically
-linked while the MSVC runtime remains dynamically linked. This minimizes application DLL
-packaging while remaining compatible with the normal Visual C++ runtime deployment model.
+The baseline vcpkg triplet is `x64-windows-static-md-gl33`: third-party libraries are
+statically linked while the MSVC runtime remains dynamically linked. The custom triplet also
+generates GLAD for the OpenGL 3.3 Core profile. This minimizes application DLL packaging while
+remaining compatible with the normal Visual C++ runtime deployment model.
