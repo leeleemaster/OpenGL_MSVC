@@ -62,6 +62,26 @@ The application owns the GLFW context for its full lifetime. Function-local `Vie
 shader, and mesh RAII objects are destroyed before `Application` destroys the window and terminates
 GLFW, so every OpenGL deletion runs while the context is still current.
 
+## MiniShader runtime boundary
+
+The MiniShader compiler remains in `dentalviz_core` and requires no OpenGL context:
+
+```text
+Editor source
+  -> Lexer -> Parser/AST -> Semantic Analyzer -> GLSL Generator
+  -> candidate OpenGL compile/link -> active ShaderProgram
+```
+
+Lexical, syntax, or semantic failure returns diagnostics before GLSL is produced. The application
+constructs a separate candidate `ShaderProgram` for driver compilation and linking. Move assignment
+replaces the active program only after the candidate is complete, so any failure preserves the
+Last Known Good program and the rendered scene. This pipeline runs only for the UI's
+`Compile & Apply` action; editing source alone has no renderer side effect.
+
+The generated fragment template retains model-space clipping and Normal Color mode. Fragment
+uniforms are set only when the linked program exposes them because a valid MiniShader may not use
+`baseColor` or `lightDir`, allowing the driver to optimize those uniforms away.
+
 ## Release linkage
 
 The baseline vcpkg triplet is `x64-windows-static-md-gl33`: third-party libraries are

@@ -16,6 +16,10 @@ public:
     [[nodiscard]] static ShaderProgram fromFiles(
         const std::filesystem::path& vertexPath,
         const std::filesystem::path& fragmentPath);
+    [[nodiscard]] static ShaderProgram fromVertexFileAndFragmentSource(
+        const std::filesystem::path& vertexPath,
+        std::string_view fragmentSource,
+        std::string_view fragmentLabel);
     ~ShaderProgram();
 
     ShaderProgram(const ShaderProgram&) = delete;
@@ -28,6 +32,9 @@ public:
     void setVector3(const char* name, const glm::vec3& value) const;
     void setFloat(const char* name, float value) const;
     void setInteger(const char* name, int value) const;
+    void setVector3IfPresent(const char* name, const glm::vec3& value) const noexcept;
+    void setFloatIfPresent(const char* name, float value) const noexcept;
+    void setIntegerIfPresent(const char* name, int value) const noexcept;
 
 private:
     ShaderProgram(

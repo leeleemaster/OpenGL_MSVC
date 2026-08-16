@@ -76,6 +76,19 @@ ShaderProgram ShaderProgram::fromFiles(
         fragmentPath.string());
 }
 
+ShaderProgram ShaderProgram::fromVertexFileAndFragmentSource(
+    const std::filesystem::path& vertexPath,
+    std::string_view fragmentSource,
+    std::string_view fragmentLabel)
+{
+    const std::string vertexSource = readTextFile(vertexPath);
+    return ShaderProgram(
+        vertexSource,
+        fragmentSource,
+        vertexPath.string(),
+        fragmentLabel);
+}
+
 ShaderProgram::ShaderProgram(
     std::string_view vertexSource,
     std::string_view fragmentSource,
@@ -159,6 +172,30 @@ void ShaderProgram::setFloat(const char* name, float value) const
 void ShaderProgram::setInteger(const char* name, int value) const
 {
     glUniform1i(uniformLocation(name), value);
+}
+
+void ShaderProgram::setVector3IfPresent(const char* name, const glm::vec3& value) const noexcept
+{
+    const GLint location = glGetUniformLocation(program_, name);
+    if (location >= 0) {
+        glUniform3fv(location, 1, glm::value_ptr(value));
+    }
+}
+
+void ShaderProgram::setFloatIfPresent(const char* name, float value) const noexcept
+{
+    const GLint location = glGetUniformLocation(program_, name);
+    if (location >= 0) {
+        glUniform1f(location, value);
+    }
+}
+
+void ShaderProgram::setIntegerIfPresent(const char* name, int value) const noexcept
+{
+    const GLint location = glGetUniformLocation(program_, name);
+    if (location >= 0) {
+        glUniform1i(location, value);
+    }
 }
 
 GLint ShaderProgram::uniformLocation(const char* name) const

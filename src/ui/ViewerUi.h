@@ -36,6 +36,17 @@ struct ViewerModelInfo {
     bool loadedFromFile = false;
 };
 
+struct MiniShaderEditorState {
+    MiniShaderEditorState();
+
+    std::string source;
+    std::string generatedGlsl;
+    std::string compilerOutput = "Edit the material, then select Compile & Apply.";
+    bool outputIsError = false;
+    bool hasActiveShader = false;
+    unsigned int appliedRevision = 0;
+};
+
 struct ViewerUiState {
     ViewerModelInfo model;
     RenderMode renderMode = RenderMode::solid;
@@ -45,6 +56,7 @@ struct ViewerUiState {
     float framesPerSecond = 0.0F;
     ClippingPlane clippingPlane;
     PointMeasurement measurement;
+    MiniShaderEditorState miniShader;
     std::string statusMessage = "Viewer ready.";
     bool statusIsError = false;
 };
@@ -72,6 +84,7 @@ struct ViewerUiActions {
     bool resetCamera = false;
     bool resetClippingPlane = false;
     bool resetMeasurement = false;
+    bool compileAndApplyMiniShader = false;
 };
 
 class ViewerUi final {

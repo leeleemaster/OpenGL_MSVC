@@ -1,8 +1,9 @@
-DentalViz v0.5 Viewer — Windows x64
-==================================
+DentalViz v0.8 MiniShader — Windows x64
+======================================
 
 DentalViz is a C++20/OpenGL 3.3 desktop viewer for exploring and measuring
-triangle meshes. This package is the stable P0 viewer milestone.
+triangle meshes. This package includes the stable P0 viewer and the optional
+P1 MiniShader Runtime Compile & Apply milestone.
 
 Run
 ---
@@ -27,6 +28,11 @@ The Properties panel provides model information, rendering settings,
 point-to-point 3D straight-line measurement, and model-space Clipping Preview.
 Measurements use model units because STL/OBJ scale metadata is not assumed.
 Clipping uses fragment discard and does not create or fill a cut surface.
+
+The MiniShader tab contains a bounded material editor. Compile & Apply runs the
+lexer, parser, semantic validator, GLSL generator, and OpenGL compiler only when
+the button is selected. An error retains the Last Known Good shader and reports
+its line and column; no automatic file watching is performed.
 
 Requirements
 ------------

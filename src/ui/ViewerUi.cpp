@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <imgui_stdlib.h>
 
 #include <glm/vec4.hpp>
 
@@ -19,6 +20,15 @@
 namespace {
 
 constexpr float minimumViewerWidth = 180.0F;
+
+constexpr std::string_view defaultMiniShaderSource =
+    "material Dental {\n"
+    "    let n = normalize(normal);\n"
+    "    let l = normalize(lightDir);\n"
+    "    let diffuse = max(dot(n, l), 0.0);\n"
+    "    let intensity = 0.2 + diffuse;\n"
+    "    output = baseColor * intensity;\n"
+    "}";
 
 std::string pathToUtf8(const std::filesystem::path& path)
 {
@@ -56,6 +66,11 @@ void configureStyle()
 } // namespace
 
 namespace dentalviz {
+
+MiniShaderEditorState::MiniShaderEditorState()
+    : source(defaultMiniShaderSource)
+{
+}
 
 const char* renderModeName(RenderMode mode) noexcept
 {
@@ -389,6 +404,54 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                 ImGui::TextWrapped("Preview only: the cut surface is not capped or filled.");
                 actions.resetClippingPlane =
                     ImGui::Button("Reset Plane", ImVec2(-1.0F, 0.0F));
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("MiniShader")) {
+                ImGui::TextWrapped(
+                    "Edit the bounded material language and apply it without restarting the viewer.");
+                ImGui::TextDisabled("Button-driven Runtime Compile & Apply");
+                if (ImGui::Button("Compile & Apply", ImVec2(195.0F, 0.0F))) {
+                    actions.compileAndApplyMiniShader = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Reset Source", ImVec2(-1.0F, 0.0F))) {
+                    state.miniShader.source = defaultMiniShaderSource;
+                    state.miniShader.compilerOutput =
+                        "Editor source reset. The current shader is unchanged.";
+                    state.miniShader.outputIsError = false;
+                }
+                ImGui::InputTextMultiline(
+                    "##MiniShader source",
+                    &state.miniShader.source,
+                    ImVec2(-1.0F, 92.0F),
+                    ImGuiInputTextFlags_AllowTabInput);
+
+                const ImVec4 compilerColor = state.miniShader.outputIsError
+                    ? ImVec4(1.0F, 0.38F, 0.32F, 1.0F)
+                    : ImVec4(0.48F, 0.84F, 0.68F, 1.0F);
+                ImGui::PushStyleColor(ImGuiCol_Text, compilerColor);
+                ImGui::TextWrapped("%s", state.miniShader.compilerOutput.c_str());
+                ImGui::PopStyleColor();
+                if (state.miniShader.hasActiveShader) {
+                    ImGui::TextDisabled(
+                        "Active MiniShader revision %u (Last Known Good)",
+                        state.miniShader.appliedRevision);
+                } else {
+                    ImGui::TextDisabled("Active shader: built-in Viewer shader (Last Known Good)");
+                }
+
+                if (ImGui::CollapsingHeader("Generated GLSL Preview")) {
+                    if (state.miniShader.generatedGlsl.empty()) {
+                        ImGui::TextDisabled("No GLSL has been generated yet.");
+                    } else {
+                        ImGui::InputTextMultiline(
+                            "##Generated GLSL",
+                            &state.miniShader.generatedGlsl,
+                            ImVec2(-1.0F, 170.0F),
+                            ImGuiInputTextFlags_ReadOnly);
+                    }
+                }
                 ImGui::EndTabItem();
             }
             ImGui::EndTabBar();

@@ -3,12 +3,13 @@
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
 [![Windows Build](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml/badge.svg?branch=main)](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml)
-[50초 Viewer Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
+[50초 P0 Viewer Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
 
 ![DentalViz Viewer overview](docs/screenshots/01_overview.png)
 
-현재 단계는 STL/OBJ 메시 탐색·측정·Clipping Preview를 제공하는 P0 Viewer Release입니다.
-기본 화면은 프로젝트에서 직접 만든 비임상 절차 생성 테스트 형상을 사용합니다.
+현재 단계는 안정화된 P0 Viewer 위에 P1 MiniShader Runtime Compile & Apply까지 통합한
+`v0.8-minishader` 마일스톤입니다. 기본 화면은 프로젝트에서 직접 만든 비임상 절차 생성
+테스트 형상을 사용합니다.
 
 ## 목표 기능
 
@@ -18,7 +19,7 @@ C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정�
 - Ray–Triangle 기반 Picking
 - 두 표면점 사이의 3D 직선거리 측정
 - Fragment discard 기반 Clipping Preview
-- 선택 기능: MiniShader Runtime Compile & Apply
+- MiniShader Runtime Compile & Apply와 Last Known Good Shader 보존
 
 ## 데모와 스크린샷
 
@@ -27,6 +28,8 @@ C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정�
 - [Ray Picking](docs/screenshots/03_picking.png)
 - [3D Point-to-Point Measurement](docs/screenshots/04_measurement.png)
 - [Clipping Preview](docs/screenshots/05_clipping.png)
+- [MiniShader Runtime Compile & Apply](docs/screenshots/06_minishader.png)
+- [MiniShader 오류와 Last Known Good](docs/screenshots/07_minishader_error.png)
 
 스크린샷과 Demo는 실제 Release 실행 창을 자동 조작해 생성합니다.
 
@@ -50,7 +53,7 @@ Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치
 빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
 
 재배포 가능한 Shader와 제3자 라이선스 고지를 포함한 Windows x64 ZIP은 다음 명령으로
-생성합니다. 결과는 `out/DentalViz-v0.5-viewer-windows-x64.zip`입니다.
+생성합니다. 결과는 `out/DentalViz-v0.8-minishader-windows-x64.zip`입니다.
 
 ```powershell
 ./scripts/package.ps1 -Configuration Release
@@ -66,6 +69,12 @@ Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료�
 있습니다. 평면은 모델 좌표계에 고정되므로 카메라를 움직여도 모델에 대한 위치가 바뀌지
 않습니다. 이 기능은 Fragment Shader가 평면 바깥 조각을 버리는 미리보기이며, 잘린 단면을
 새 형상으로 생성하거나 채우지는 않습니다.
+
+`MiniShader` 탭에서는 제한된 Material Source를 편집하고 `Compile & Apply` 버튼으로만
+Lexer → Parser → Semantic Analyzer → GLSL Generator → OpenGL Compile/Link를 실행합니다.
+성공한 Shader만 현재 렌더러와 교체되며, 문법·타입·드라이버 오류가 발생하면 직전
+Last Known Good Shader가 유지되고 오류의 line/column이 표시됩니다. 생성된 GLSL은 같은
+탭의 Preview에서 확인할 수 있으며 자동 Hot Reload라고 표현하지 않습니다.
 
 ```powershell
 ./out/build/msvc/Debug/DentalViz.exe
@@ -113,6 +122,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] MiniShader Recursive Descent Parser, 연산자 우선순위와 `unique_ptr` AST
 - [x] MiniShader 이름·함수·타입·연산자 Semantic Analyzer와 다중 오류 진단
 - [x] MiniShader AST 기반 결정적 GLSL 생성, Source Mapping과 Golden Test
+- [x] MiniShader Editor, Runtime Compile & Apply와 Last Known Good Shader
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),

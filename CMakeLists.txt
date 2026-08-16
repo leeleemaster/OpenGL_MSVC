@@ -27,6 +27,7 @@ add_library(dentalviz_core STATIC
     src/core/PointMeasurement.cpp
     src/core/RayPicking.cpp
     src/minishader/Diagnostic.cpp
+    src/minishader/Compiler.cpp
     src/minishader/GlslGenerator.cpp
     src/minishader/Lexer.cpp
     src/minishader/Parser.cpp
@@ -102,6 +103,7 @@ if(BUILD_TESTING)
         tests/MeshDataTests.cpp
         tests/ClickGestureTests.cpp
         tests/MeshLoaderTests.cpp
+        tests/MiniShaderCompilerTests.cpp
         tests/MiniShaderGlslGeneratorTests.cpp
         tests/MiniShaderLexerTests.cpp
         tests/MiniShaderParserTests.cpp

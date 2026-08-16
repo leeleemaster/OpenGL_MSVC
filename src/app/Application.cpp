@@ -7,6 +7,7 @@
 #include "core/PointMeasurement.h"
 #include "core/RayPicking.h"
 #include "io/MeshLoader.h"
+#include "minishader/Compiler.h"
 #include "platform/ExecutablePath.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
@@ -233,7 +234,7 @@ int Application::run(const ApplicationRunOptions& options)
     uiState.clippingPlane.reset(modelBounds);
     GpuMesh gpuMesh(modelData);
     const std::filesystem::path shaderDirectory = findShaderDirectory();
-    const ShaderProgram toothShader = ShaderProgram::fromFiles(
+    ShaderProgram toothShader = ShaderProgram::fromFiles(
         shaderDirectory / "mesh.vert",
         shaderDirectory / "mesh.frag");
     const SelectionMarker selectionMarker(
@@ -298,6 +299,50 @@ int Application::run(const ApplicationRunOptions& options)
         viewerUi.beginFrame(windowWidth, windowHeight, framebufferWidth, framebufferHeight);
         const RenderMode modeAtFrameStart = uiState.renderMode;
         const ViewerUiActions uiActions = viewerUi.draw(uiState);
+
+        if (uiActions.compileAndApplyMiniShader) {
+            minishader::CompilationResult compilation =
+                minishader::Compiler::compile(uiState.miniShader.source);
+            if (!compilation.succeeded()) {
+                if (!compilation.diagnostics.empty()) {
+                    uiState.miniShader.compilerOutput =
+                        minishader::formatDiagnostics(compilation.diagnostics);
+                } else {
+                    uiState.miniShader.compilerOutput = compilation.internalError;
+                }
+                uiState.miniShader.outputIsError = true;
+                uiState.statusMessage = "MiniShader failed; Last Known Good retained.";
+                uiState.statusIsError = true;
+                std::cerr << uiState.miniShader.compilerOutput << '\n';
+            } else {
+                uiState.miniShader.generatedGlsl = compilation.fragmentSource;
+                try {
+                    ShaderProgram replacement =
+                        ShaderProgram::fromVertexFileAndFragmentSource(
+                            shaderDirectory / "mesh.vert",
+                            compilation.fragmentSource,
+                            "MiniShader generated fragment");
+                    toothShader = std::move(replacement);
+                    ++uiState.miniShader.appliedRevision;
+                    uiState.miniShader.hasActiveShader = true;
+                    uiState.miniShader.compilerOutput =
+                        "Compile & Apply succeeded. The generated shader is now active.";
+                    uiState.miniShader.outputIsError = false;
+                    uiState.statusMessage =
+                        "MiniShader revision " +
+                        std::to_string(uiState.miniShader.appliedRevision) + " active.";
+                    uiState.statusIsError = false;
+                    std::cout << uiState.statusMessage << '\n';
+                } catch (const std::exception& error) {
+                    uiState.miniShader.compilerOutput = error.what();
+                    uiState.miniShader.outputIsError = true;
+                    uiState.statusMessage =
+                        "OpenGL compile failed; Last Known Good retained.";
+                    uiState.statusIsError = true;
+                    std::cerr << uiState.miniShader.compilerOutput << '\n';
+                }
+            }
+        }
 
         if (uiActions.modelToLoad.has_value()) {
             try {
@@ -431,15 +476,16 @@ int Application::run(const ApplicationRunOptions& options)
         toothShader.setMatrix4("uModel", model);
         toothShader.setMatrix4("uView", view);
         toothShader.setMatrix4("uProjection", projection);
-        toothShader.setVector3("uBaseColor", uiState.baseColor);
-        toothShader.setVector3("uLightPosition", uiState.lightPosition);
-        toothShader.setVector3("uCameraPosition", cameraPosition);
-        toothShader.setFloat("uShininess", uiState.shininess);
-        toothShader.setInteger("uRenderMode", static_cast<int>(uiState.renderMode));
-        toothShader.setInteger(
+        toothShader.setVector3IfPresent("uBaseColor", uiState.baseColor);
+        toothShader.setVector3IfPresent("uLightPosition", uiState.lightPosition);
+        toothShader.setVector3IfPresent("uCameraPosition", cameraPosition);
+        toothShader.setFloatIfPresent("uShininess", uiState.shininess);
+        toothShader.setIntegerIfPresent(
+            "uRenderMode", static_cast<int>(uiState.renderMode));
+        toothShader.setIntegerIfPresent(
             "uClipEnabled", uiState.clippingPlane.enabled() ? 1 : 0);
-        toothShader.setVector3("uClipNormal", uiState.clippingPlane.normal());
-        toothShader.setFloat("uClipDistance", uiState.clippingPlane.distance());
+        toothShader.setVector3IfPresent("uClipNormal", uiState.clippingPlane.normal());
+        toothShader.setFloatIfPresent("uClipDistance", uiState.clippingPlane.distance());
 
         if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
