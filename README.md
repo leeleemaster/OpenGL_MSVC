@@ -6,7 +6,7 @@
 [![MiniShader milestone](https://img.shields.io/badge/milestone-v0.8--minishader-0b7d87)](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[▶ 50초 실제 실행 Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4) ·
+[▶ 84초 최종 실행 Demo](docs/demo/DentalViz-v0.8-portfolio-demo.mp4) ·
 [Architecture](docs/architecture.md) ·
 [Performance](docs/performance/benchmark-summary.md) ·
 [v0.8 Source Tag](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
@@ -25,6 +25,8 @@ P0 Viewer와 P1 MiniShader는 완료됐습니다. 기본 화면은 프로젝트�
 
 ## Demo
 
+- [84초 최종 Portfolio Demo — Viewer + MiniShader](docs/demo/DentalViz-v0.8-portfolio-demo.mp4)
+- [50초 P0 Viewer Demo (archive)](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
 - [전체 Viewer](docs/screenshots/01_overview.png)
 - [Wireframe](docs/screenshots/02_wireframe.png)
 - [Ray Picking](docs/screenshots/03_picking.png)
@@ -33,8 +35,9 @@ P0 Viewer와 P1 MiniShader는 완료됐습니다. 기본 화면은 프로젝트�
 - [MiniShader Runtime Compile & Apply](docs/screenshots/06_minishader.png)
 - [MiniShader 오류와 Last Known Good](docs/screenshots/07_minishader_error.png)
 
-모든 화면 자료는 실제 Release 실행 창을 캡처했습니다. 현재 50초 영상은 P0 Viewer를
-보여주며, MiniShader까지 포함한 60~90초 최종 영상은 Commit 23 산출물로 추가합니다.
+모든 화면 자료는 실제 Release 실행 창을 캡처했습니다. 84초 최종 영상은 카메라 조작,
+렌더 모드, Picking과 3D 거리 측정, Clipping Preview, MiniShader의 정상 적용과 오류 시
+Last Known Good 유지를 한 흐름으로 보여줍니다. 50초 영상은 P0 Viewer 기록으로 보존합니다.
 
 ## Features
 
