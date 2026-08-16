@@ -4,6 +4,7 @@
 #include "core/BuildInfo.h"
 #include "core/MeshData.h"
 #include "core/OrbitCamera.h"
+#include "io/MeshLoader.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
 
@@ -20,6 +21,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -164,21 +166,47 @@ Application::~Application()
     }
 }
 
-int Application::run(std::optional<double> maximumRuntimeSeconds)
+int Application::run(const ApplicationRunOptions& options)
 {
-    const MeshData toothData = makeProceduralTooth();
-    const AxisAlignedBounds toothBounds = toothData.bounds();
-    const GpuMesh toothMesh(toothData);
+    MeshData modelData;
+    std::string modelName = "Procedural Tooth (test geometry)";
+    std::optional<MeshLoadResult> loadedModel;
+    if (options.modelPath.has_value()) {
+        try {
+            loadedModel = MeshLoader::load(options.modelPath.value());
+            modelName = loadedModel->sourcePath.filename().string();
+            modelData = std::move(loadedModel->mesh);
+        } catch (const std::exception& error) {
+            std::cerr << "Model load failed: " << error.what() << '\n'
+                      << "Falling back to procedural test geometry.\n";
+        }
+    }
+    if (modelData.vertices.empty()) {
+        modelData = makeProceduralTooth();
+    }
+
+    const AxisAlignedBounds modelBounds = modelData.bounds();
+    const GpuMesh gpuMesh(modelData);
     const std::filesystem::path shaderDirectory = findShaderDirectory();
     const ShaderProgram toothShader = ShaderProgram::fromFiles(
         shaderDirectory / "mesh.vert",
         shaderDirectory / "mesh.frag");
 
-    std::cout << "Test mesh: " << toothData.vertices.size() << " vertices, "
-              << toothData.indices.size() / 3 << " triangles\n"
-              << "Bounds size: " << toothBounds.size().x << ", "
-              << toothBounds.size().y << ", " << toothBounds.size().z << '\n'
-              << "Shaders: " << shaderDirectory.string() << '\n';
+    std::cout << "Model: " << modelName << '\n'
+              << "Mesh: " << modelData.vertices.size() << " vertices, "
+              << modelData.indices.size() / 3 << " triangles\n"
+              << "Bounds size: " << modelBounds.size().x << ", "
+              << modelBounds.size().y << ", " << modelBounds.size().z << '\n';
+    if (loadedModel.has_value()) {
+        const double loadMilliseconds =
+            static_cast<double>(loadedModel->loadDuration.count()) / 1000.0;
+        std::cout << "Source: " << loadedModel->sourcePath.string() << '\n'
+                  << "Source meshes: " << loadedModel->sourceMeshCount << '\n'
+                  << "Load time: " << std::fixed << std::setprecision(3)
+                  << loadMilliseconds << " ms\n"
+                  << "Assumed unit: 1 model unit = 1 mm (STL has no unit metadata)\n";
+    }
+    std::cout << "Shaders: " << shaderDirectory.string() << '\n';
 
     int initialFramebufferWidth = 0;
     int initialFramebufferHeight = 0;
@@ -189,8 +217,8 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
         : 16.0F / 9.0F;
 
     OrbitCamera camera;
-    camera.fit(toothBounds, initialAspectRatio);
-    CameraController cameraController(window_, camera, toothBounds);
+    camera.fit(modelBounds, initialAspectRatio);
+    CameraController cameraController(window_, camera, modelBounds);
     std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
               << "Render modes: 1 Solid | 2 Wireframe | 3 Normals | Esc close\n";
 
@@ -206,8 +234,8 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
 
     while (glfwWindowShouldClose(window_) == GLFW_FALSE) {
         const double now = glfwGetTime();
-        if (maximumRuntimeSeconds.has_value() &&
-            now - startTime >= maximumRuntimeSeconds.value()) {
+        if (options.maximumRuntimeSeconds.has_value() &&
+            now - startTime >= options.maximumRuntimeSeconds.value()) {
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
             continue;
         }
@@ -264,7 +292,7 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
         if (renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
-        toothMesh.draw();
+        gpuMesh.draw();
         if (renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }

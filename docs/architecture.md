@@ -7,13 +7,20 @@ DentalViz executable
   -> app / ui / renderer / scene / io
   -> dentalviz_core (geometry and shared domain types)
 
+dentalviz_io
+  -> dentalviz_core / Assimp
+
 dentalviz_tests
-  -> dentalviz_core
+  -> dentalviz_core / dentalviz_io
 ```
 
 `dentalviz_core` must not require an OpenGL context. Geometry intersection, measurement,
 bounds, camera math that can be isolated, and the optional MiniShader compiler belong in
 testable code. OpenGL handles remain inside renderer-side RAII types.
+
+`dentalviz_io` converts Assimp scenes, node transforms, positions, normals, and triangle
+indices into the same `MeshData` used by procedural geometry. File parsing remains independent
+of the OpenGL context and is tested with project-authored non-clinical fixtures.
 
 ## Viewport decision
 

@@ -12,6 +12,7 @@ include(cmake/Warnings.cmake)
 
 option(DENTALVIZ_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+find_package(assimp CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
@@ -35,6 +36,21 @@ target_compile_definitions(dentalviz_core
 )
 dentalviz_set_warnings(dentalviz_core)
 
+add_library(dentalviz_io STATIC
+    src/io/MeshLoader.cpp
+)
+target_include_directories(dentalviz_io
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_compile_features(dentalviz_io PUBLIC cxx_std_20)
+target_link_libraries(dentalviz_io
+    PUBLIC
+        dentalviz_core
+        assimp::assimp
+)
+dentalviz_set_warnings(dentalviz_io)
+
 add_executable(DentalViz
     src/app/Application.cpp
     src/app/CameraController.cpp
@@ -45,6 +61,7 @@ add_executable(DentalViz
 target_link_libraries(DentalViz
     PRIVATE
         dentalviz_core
+        dentalviz_io
         glad::glad
         glfw
 )
@@ -64,15 +81,21 @@ if(BUILD_TESTING)
 
     add_executable(dentalviz_tests
         tests/MeshDataTests.cpp
+        tests/MeshLoaderTests.cpp
         tests/OrbitCameraTests.cpp
         tests/SmokeTests.cpp
     )
     target_link_libraries(dentalviz_tests
         PRIVATE
             dentalviz_core
+            dentalviz_io
             Catch2::Catch2WithMain
     )
     target_compile_features(dentalviz_tests PRIVATE cxx_std_20)
+    target_compile_definitions(dentalviz_tests
+        PRIVATE
+            DENTALVIZ_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures"
+    )
     dentalviz_set_warnings(dentalviz_tests)
 
     include(Catch)

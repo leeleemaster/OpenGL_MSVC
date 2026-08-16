@@ -2,7 +2,7 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 외부 GLSL과 복수 렌더 모드로 절차 생성 치아 메시를 탐색하는 단계입니다.
+현재 단계는 외부 GLSL과 복수 렌더 모드를 사용해 STL/OBJ 메시를 불러오고 탐색하는 단계입니다.
 
 ## 목표 기능
 
@@ -34,6 +34,15 @@ Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료�
 ./out/build/msvc/Debug/DentalViz.exe
 ```
 
+외부 STL 또는 OBJ를 시작 시 로드할 수 있습니다. STL에는 단위 메타데이터가 없으므로
+현재 표시는 `1 model unit = 1 mm`라는 명시적인 가정을 사용합니다.
+
+```powershell
+./out/build/msvc/Debug/DentalViz.exe --model "C:\Models\dental.stl"
+```
+
+파일이 없거나 손상된 경우 오류를 출력하고 절차 생성 테스트 치아로 복구합니다.
+
 ### VS Code
 
 Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소 폴더를 신뢰한 뒤
@@ -52,7 +61,9 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] Orbit/Pan/Zoom과 Bounds 기반 `F` 모델 맞춤 카메라
 - [x] 외부 GLSL 로딩과 파일·단계별 컴파일 오류 표시
 - [x] Blinn–Phong Solid/Wireframe/Normal Color 렌더 모드
-- [ ] Dental STL 로딩과 메시 전처리
+- [x] Assimp 기반 STL/OBJ 로딩, 법선·인덱스·노드 변환 전처리
+- [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
+- [ ] Dear ImGui Viewer UI
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
 [`docs/coordinate-system.md`](docs/coordinate-system.md),

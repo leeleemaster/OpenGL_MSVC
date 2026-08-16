@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -10,22 +11,36 @@
 
 namespace {
 
-std::optional<double> parseMaximumRuntime(int argc, char* argv[])
+double parsePositiveSeconds(const char* value)
 {
-    if (argc == 1) {
-        return std::nullopt;
-    }
-
-    if (argc != 3 || std::string_view(argv[1]) != "--smoke-seconds") {
-        throw std::invalid_argument("Usage: DentalViz [--smoke-seconds <positive number>]");
-    }
-
     char* parseEnd = nullptr;
-    const double seconds = std::strtod(argv[2], &parseEnd);
-    if (parseEnd == argv[2] || *parseEnd != '\0' || !std::isfinite(seconds) || seconds <= 0.0) {
+    const double seconds = std::strtod(value, &parseEnd);
+    if (parseEnd == value || *parseEnd != '\0' || !std::isfinite(seconds) || seconds <= 0.0) {
         throw std::invalid_argument("--smoke-seconds must be a positive number.");
     }
     return seconds;
+}
+
+dentalviz::ApplicationRunOptions parseOptions(int argc, char* argv[])
+{
+    dentalviz::ApplicationRunOptions options;
+    for (int index = 1; index < argc; ++index) {
+        const std::string_view argument(argv[index]);
+        if (argument == "--smoke-seconds" && index + 1 < argc) {
+            options.maximumRuntimeSeconds = parsePositiveSeconds(argv[++index]);
+        } else if (argument == "--model" && index + 1 < argc) {
+            const std::filesystem::path modelPath(argv[++index]);
+            if (modelPath.empty()) {
+                throw std::invalid_argument("--model path must not be empty.");
+            }
+            options.modelPath = modelPath;
+        } else {
+            throw std::invalid_argument(
+                "Usage: DentalViz [--model <STL-or-OBJ-path>] "
+                "[--smoke-seconds <positive number>]");
+        }
+    }
+    return options;
 }
 
 } // namespace
@@ -33,9 +48,9 @@ std::optional<double> parseMaximumRuntime(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
     try {
-        const auto maximumRuntime = parseMaximumRuntime(argc, argv);
+        const dentalviz::ApplicationRunOptions options = parseOptions(argc, argv);
         dentalviz::Application application;
-        return application.run(maximumRuntime);
+        return application.run(options);
     } catch (const std::exception& error) {
         std::cerr << "DentalViz failed: " << error.what() << '\n';
         return 1;

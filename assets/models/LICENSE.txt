@@ -1,0 +1,8 @@
+No dental model is currently bundled with DentalViz.
+
+Before adding a model to this directory, record its source URL, author, exact license,
+redistribution permission, and any modifications in this file. STL files contain no reliable
+unit metadata; DentalViz therefore labels 1 model unit = 1 mm as an explicit assumption.
+
+The procedural tooth and files under tests/fixtures are project-authored test geometry, not
+clinical assets or patient data.

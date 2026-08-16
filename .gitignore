@@ -23,6 +23,7 @@ CMakeUserPresets.json
 *.pdb
 *.ilk
 *.obj
+!tests/fixtures/*.obj
 *.exe
 *.dll
 *.lib

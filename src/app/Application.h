@@ -1,10 +1,16 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 
 struct GLFWwindow;
 
 namespace dentalviz {
+
+struct ApplicationRunOptions {
+    std::optional<double> maximumRuntimeSeconds;
+    std::optional<std::filesystem::path> modelPath;
+};
 
 class Application final {
 public:
@@ -16,7 +22,7 @@ public:
     Application(Application&&) = delete;
     Application& operator=(Application&&) = delete;
 
-    int run(std::optional<double> maximumRuntimeSeconds = std::nullopt);
+    int run(const ApplicationRunOptions& options = {});
 
 private:
     GLFWwindow* window_ = nullptr;
