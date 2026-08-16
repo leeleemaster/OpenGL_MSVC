@@ -2,7 +2,7 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 OpenGL 애플리케이션 루프에서 절차 생성 치아 메시를 렌더링하는 단계입니다.
+현재 단계는 외부 GLSL과 복수 렌더 모드로 절차 생성 치아 메시를 탐색하는 단계입니다.
 
 ## 목표 기능
 
@@ -27,7 +27,8 @@ Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치
 빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
 
 Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orbit, 가운데 드래그는 Pan,
-휠은 Zoom, `F`는 모델 맞춤이며 `Escape` 또는 닫기 버튼으로 종료합니다.
+휠은 Zoom, `F`는 모델 맞춤입니다. 숫자 `1`, `2`, `3`으로 각각 Solid, Wireframe,
+Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료합니다.
 
 ```powershell
 ./out/build/msvc/Debug/DentalViz.exe
@@ -49,6 +50,9 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] Indexed GPU Mesh와 Blinn–Phong 테스트 렌더링
 - [x] 절차 생성 치아의 법선·경계·인덱스 단위 테스트
 - [x] Orbit/Pan/Zoom과 Bounds 기반 `F` 모델 맞춤 카메라
+- [x] 외부 GLSL 로딩과 파일·단계별 컴파일 오류 표시
+- [x] Blinn–Phong Solid/Wireframe/Normal Color 렌더 모드
+- [ ] Dental STL 로딩과 메시 전처리
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
 [`docs/coordinate-system.md`](docs/coordinate-system.md),

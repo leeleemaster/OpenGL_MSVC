@@ -13,69 +13,65 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
+#include <array>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 
 namespace {
 
 constexpr int initialWindowWidth = 1280;
 constexpr int initialWindowHeight = 720;
 
-constexpr std::string_view toothVertexShader = R"glsl(
-#version 330 core
+enum class RenderMode : int {
+    solid = 0,
+    wireframe = 1,
+    normals = 2,
+};
 
-layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec3 aNormal;
-
-uniform mat4 uModel;
-uniform mat4 uView;
-uniform mat4 uProjection;
-
-out vec3 worldPosition;
-out vec3 worldNormal;
-
-void main()
+const char* renderModeName(RenderMode mode) noexcept
 {
-    vec4 position = uModel * vec4(aPosition, 1.0);
-    worldPosition = position.xyz;
-    worldNormal = mat3(transpose(inverse(uModel))) * aNormal;
-    gl_Position = uProjection * uView * position;
+    switch (mode) {
+    case RenderMode::solid:
+        return "Solid";
+    case RenderMode::wireframe:
+        return "Wireframe";
+    case RenderMode::normals:
+        return "Normals";
+    }
+    return "Unknown";
 }
-)glsl";
 
-constexpr std::string_view toothFragmentShader = R"glsl(
-#version 330 core
-
-in vec3 worldPosition;
-in vec3 worldNormal;
-
-uniform vec3 uBaseColor;
-uniform vec3 uLightPosition;
-uniform vec3 uCameraPosition;
-
-out vec4 fragmentColor;
-
-void main()
+std::filesystem::path findShaderDirectory()
 {
-    vec3 normal = normalize(worldNormal);
-    vec3 lightDirection = normalize(uLightPosition - worldPosition);
-    vec3 viewDirection = normalize(uCameraPosition - worldPosition);
-    vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+    const std::filesystem::path sourceDirectory =
+        std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+    const std::array candidates{
+        std::filesystem::current_path() / "assets" / "shaders",
+        sourceDirectory / "assets" / "shaders",
+    };
 
-    float diffuse = max(dot(normal, lightDirection), 0.0);
-    float specular = pow(max(dot(normal, halfwayDirection), 0.0), 72.0);
-    float rim = pow(1.0 - max(dot(normal, viewDirection), 0.0), 2.0);
+    for (const std::filesystem::path& candidate : candidates) {
+        if (std::filesystem::is_regular_file(candidate / "mesh.vert") &&
+            std::filesystem::is_regular_file(candidate / "mesh.frag")) {
+            return candidate;
+        }
+    }
 
-    vec3 color = uBaseColor * (0.20 + 0.80 * diffuse);
-    color += vec3(0.42) * specular;
-    color += vec3(0.08, 0.16, 0.18) * rim;
-    fragmentColor = vec4(color, 1.0);
+    throw std::runtime_error(
+        "Shader assets were not found. Expected assets/shaders/mesh.vert and mesh.frag.");
 }
-)glsl";
+
+bool keyPressedOnce(GLFWwindow* window, int key, bool& wasPressed) noexcept
+{
+    const bool isPressed = glfwGetKey(window, key) == GLFW_PRESS;
+    const bool pressedOnce = isPressed && !wasPressed;
+    wasPressed = isPressed;
+    return pressedOnce;
+}
 
 void reportGlfwError(int errorCode, const char* description)
 {
@@ -143,6 +139,9 @@ Application::Application()
     glfwSwapInterval(1);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     GLint multisampleCount = 0;
     glGetIntegerv(GL_SAMPLES, &multisampleCount);
@@ -170,12 +169,16 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
     const MeshData toothData = makeProceduralTooth();
     const AxisAlignedBounds toothBounds = toothData.bounds();
     const GpuMesh toothMesh(toothData);
-    const ShaderProgram toothShader(toothVertexShader, toothFragmentShader);
+    const std::filesystem::path shaderDirectory = findShaderDirectory();
+    const ShaderProgram toothShader = ShaderProgram::fromFiles(
+        shaderDirectory / "mesh.vert",
+        shaderDirectory / "mesh.frag");
 
     std::cout << "Test mesh: " << toothData.vertices.size() << " vertices, "
               << toothData.indices.size() / 3 << " triangles\n"
               << "Bounds size: " << toothBounds.size().x << ", "
-              << toothBounds.size().y << ", " << toothBounds.size().z << '\n';
+              << toothBounds.size().y << ", " << toothBounds.size().z << '\n'
+              << "Shaders: " << shaderDirectory.string() << '\n';
 
     int initialFramebufferWidth = 0;
     int initialFramebufferHeight = 0;
@@ -188,7 +191,14 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
     OrbitCamera camera;
     camera.fit(toothBounds, initialAspectRatio);
     CameraController cameraController(window_, camera, toothBounds);
-    std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit | Esc close\n";
+    std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
+              << "Render modes: 1 Solid | 2 Wireframe | 3 Normals | Esc close\n";
+
+    RenderMode renderMode = RenderMode::solid;
+    bool solidWasPressed = false;
+    bool wireframeWasPressed = false;
+    bool normalsWasPressed = false;
+    unsigned int renderModeChanges = 0;
 
     const double startTime = glfwGetTime();
     double titleIntervalStart = startTime;
@@ -204,6 +214,22 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
 
         if (glfwGetKey(window_, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
+        }
+
+        RenderMode requestedMode = renderMode;
+        if (keyPressedOnce(window_, GLFW_KEY_1, solidWasPressed)) {
+            requestedMode = RenderMode::solid;
+        }
+        if (keyPressedOnce(window_, GLFW_KEY_2, wireframeWasPressed)) {
+            requestedMode = RenderMode::wireframe;
+        }
+        if (keyPressedOnce(window_, GLFW_KEY_3, normalsWasPressed)) {
+            requestedMode = RenderMode::normals;
+        }
+        if (requestedMode != renderMode) {
+            renderMode = requestedMode;
+            ++renderModeChanges;
+            std::cout << "Render mode: " << renderModeName(renderMode) << '\n';
         }
 
         int framebufferWidth = 0;
@@ -232,7 +258,16 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
         toothShader.setVector3("uBaseColor", glm::vec3(0.86F, 0.76F, 0.56F));
         toothShader.setVector3("uLightPosition", glm::vec3(3.2F, 4.0F, 4.5F));
         toothShader.setVector3("uCameraPosition", cameraPosition);
+        toothShader.setFloat("uShininess", 72.0F);
+        toothShader.setInteger("uRenderMode", static_cast<int>(renderMode));
+
+        if (renderMode == RenderMode::wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
         toothMesh.draw();
+        if (renderMode == RenderMode::wireframe) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
 
         glfwSwapBuffers(window_);
         glfwPollEvents();
@@ -242,7 +277,8 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
         if (titleInterval >= 0.5) {
             const double framesPerSecond = static_cast<double>(renderedFrames) / titleInterval;
             std::ostringstream title;
-            title << projectName() << " | OpenGL 3.3 Core | " << std::fixed
+            title << projectName() << " | " << renderModeName(renderMode)
+                  << " | OpenGL 3.3 Core | " << std::fixed
                   << std::setprecision(1) << framesPerSecond << " FPS";
             glfwSetWindowTitle(window_, title.str().c_str());
             titleIntervalStart = now;
@@ -260,6 +296,7 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
     std::cout << "Camera input: " << interactions.orbitUpdates << " orbit, "
               << interactions.panUpdates << " pan, " << interactions.zoomEvents
               << " zoom, " << interactions.fitRequests << " fit updates\n";
+    std::cout << "Render mode changes: " << renderModeChanges << '\n';
     std::cout << "Application loop exited cleanly.\n";
     return 0;
 }

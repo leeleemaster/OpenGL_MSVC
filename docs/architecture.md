@@ -29,6 +29,7 @@ becomes necessary.
 - CPU mesh data owns positions, normals, indices, and bounds.
 - GPU mesh data owns VAO/VBO/EBO handles through move-only RAII objects.
 - Upload and draw are separate operations.
+- Runtime shaders are loaded from `assets/shaders` and copied beside each built executable.
 - A shader replacement becomes active only after compile and link succeed.
 - UI communicates commands and state; it does not own renderer resources.
 

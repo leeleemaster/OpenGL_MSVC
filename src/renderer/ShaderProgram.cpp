@@ -2,6 +2,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -9,7 +10,27 @@
 
 namespace {
 
-GLuint compileShader(GLenum type, std::string_view source)
+std::string readTextFile(const std::filesystem::path& path)
+{
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file) {
+        throw std::runtime_error("Shader file could not be opened: " + path.string());
+    }
+
+    const std::streampos endPosition = file.tellg();
+    if (endPosition < 0) {
+        throw std::runtime_error("Shader file size could not be read: " + path.string());
+    }
+
+    std::string source(static_cast<std::size_t>(endPosition), '\0');
+    file.seekg(0, std::ios::beg);
+    if (!source.empty() && !file.read(source.data(), static_cast<std::streamsize>(source.size()))) {
+        throw std::runtime_error("Shader file could not be read: " + path.string());
+    }
+    return source;
+}
+
+GLuint compileShader(GLenum type, std::string_view source, std::string_view label)
 {
     const GLuint shader = glCreateShader(type);
     const char* sourceText = source.data();
@@ -28,7 +49,9 @@ GLuint compileShader(GLenum type, std::string_view source)
     std::vector<char> log(static_cast<std::size_t>(logLength > 0 ? logLength : 1));
     glGetShaderInfoLog(shader, logLength, nullptr, log.data());
     glDeleteShader(shader);
-    throw std::runtime_error("OpenGL shader compilation failed: " + std::string(log.data()));
+    throw std::runtime_error(
+        "OpenGL shader compilation failed [" + std::string(label) + "]: " +
+        std::string(log.data()));
 }
 
 } // namespace
@@ -36,11 +59,33 @@ GLuint compileShader(GLenum type, std::string_view source)
 namespace dentalviz {
 
 ShaderProgram::ShaderProgram(std::string_view vertexSource, std::string_view fragmentSource)
+    : ShaderProgram(vertexSource, fragmentSource, "inline vertex shader", "inline fragment shader")
 {
-    const GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
+}
+
+ShaderProgram ShaderProgram::fromFiles(
+    const std::filesystem::path& vertexPath,
+    const std::filesystem::path& fragmentPath)
+{
+    const std::string vertexSource = readTextFile(vertexPath);
+    const std::string fragmentSource = readTextFile(fragmentPath);
+    return ShaderProgram(
+        vertexSource,
+        fragmentSource,
+        vertexPath.string(),
+        fragmentPath.string());
+}
+
+ShaderProgram::ShaderProgram(
+    std::string_view vertexSource,
+    std::string_view fragmentSource,
+    std::string_view vertexLabel,
+    std::string_view fragmentLabel)
+{
+    const GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource, vertexLabel);
     GLuint fragmentShader = 0;
     try {
-        fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
+        fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSource, fragmentLabel);
     } catch (...) {
         glDeleteShader(vertexShader);
         throw;
@@ -104,6 +149,16 @@ void ShaderProgram::setMatrix4(const char* name, const glm::mat4& value) const
 void ShaderProgram::setVector3(const char* name, const glm::vec3& value) const
 {
     glUniform3fv(uniformLocation(name), 1, glm::value_ptr(value));
+}
+
+void ShaderProgram::setFloat(const char* name, float value) const
+{
+    glUniform1f(uniformLocation(name), value);
+}
+
+void ShaderProgram::setInteger(const char* name, int value) const
+{
+    glUniform1i(uniformLocation(name), value);
 }
 
 GLint ShaderProgram::uniformLocation(const char* name) const

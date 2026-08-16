@@ -52,6 +52,13 @@ target_compile_features(DentalViz PRIVATE cxx_std_20)
 target_compile_definitions(DentalViz PRIVATE GLFW_INCLUDE_NONE)
 dentalviz_set_warnings(DentalViz)
 
+add_custom_command(TARGET DentalViz POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders
+        $<TARGET_FILE_DIR:DentalViz>/assets/shaders
+    COMMENT "Copying DentalViz shader assets"
+)
+
 if(BUILD_TESTING)
     find_package(Catch2 3 CONFIG REQUIRED)
 
