@@ -26,6 +26,9 @@ add_library(dentalviz_core STATIC
     src/core/OrbitCamera.cpp
     src/core/PointMeasurement.cpp
     src/core/RayPicking.cpp
+    src/minishader/Diagnostic.cpp
+    src/minishader/Lexer.cpp
+    src/minishader/Token.cpp
 )
 
 target_include_directories(dentalviz_core
@@ -95,6 +98,7 @@ if(BUILD_TESTING)
         tests/MeshDataTests.cpp
         tests/ClickGestureTests.cpp
         tests/MeshLoaderTests.cpp
+        tests/MiniShaderLexerTests.cpp
         tests/OrbitCameraTests.cpp
         tests/PointMeasurementTests.cpp
         tests/RayPickingTests.cpp

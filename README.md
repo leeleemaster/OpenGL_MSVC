@@ -109,6 +109,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] 실행 파일 기준 Asset 탐색, Windows x64 ZIP, 별도 폴더 Release Smoke Test
 - [x] 실제 Viewer 스크린샷 5장과 50초 P0 Demo
 - [x] MiniShader MVP EBNF, 타입 규칙, 내장 심볼과 오류 정책 고정
+- [x] MiniShader Token Stream, 주석 처리와 1-based Source Location Lexer
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
