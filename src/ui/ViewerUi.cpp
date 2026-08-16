@@ -193,8 +193,10 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
 
         ImGui::SeparatorText("Model Information");
         ImGui::TextWrapped("%s", state.model.name.c_str());
-        ImGui::Text("Vertices    %zu", state.model.vertexCount);
-        ImGui::Text("Triangles   %zu", state.model.triangleCount);
+        ImGui::Text(
+            "Vertices %zu  |  Triangles %zu",
+            state.model.vertexCount,
+            state.model.triangleCount);
         const glm::vec3 boundsSize = state.model.bounds.size();
         ImGui::Text(
             "Bounds      %.2f x %.2f x %.2f",
@@ -280,9 +282,9 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         actions.resetCamera = ImGui::Button("Reset Camera", ImVec2(-1.0F, 0.0F));
 
         ImGui::SeparatorText("Status");
-        ImGui::Text("%.1f FPS", static_cast<double>(state.framesPerSecond));
-        ImGui::TextDisabled(
-            "Viewport %d x %d px",
+        ImGui::Text(
+            "%.1f FPS  |  Viewport %d x %d px",
+            static_cast<double>(state.framesPerSecond),
             viewerRect_.framebufferWidth,
             viewerRect_.framebufferHeight);
         const ImVec4 statusColor = state.statusIsError
@@ -292,8 +294,27 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         ImGui::TextWrapped("%s", state.statusMessage.c_str());
         ImGui::PopStyleColor();
 
+        ImGui::SeparatorText("Selection");
+        if (state.selection.has_value()) {
+            const RayHit& hit = state.selection.value();
+            ImGui::Text("Triangle #%zu", hit.triangleIndex);
+            ImGui::Text(
+                "Position  %.3f, %.3f, %.3f",
+                static_cast<double>(hit.position.x),
+                static_cast<double>(hit.position.y),
+                static_cast<double>(hit.position.z));
+            ImGui::TextDisabled(
+                "Normal    %.3f, %.3f, %.3f",
+                static_cast<double>(hit.normal.x),
+                static_cast<double>(hit.normal.y),
+                static_cast<double>(hit.normal.z));
+        } else {
+            ImGui::TextDisabled("Click a visible model surface.");
+        }
+
         ImGui::SeparatorText("Controls");
-        ImGui::TextDisabled("LMB Orbit  |  MMB Pan  |  Wheel Zoom");
+        ImGui::TextDisabled("LMB Click Select  |  LMB Drag Orbit");
+        ImGui::TextDisabled("MMB Pan  |  Wheel Zoom");
         ImGui::TextDisabled("F Fit  |  1/2/3 Render Mode");
     }
     ImGui::End();

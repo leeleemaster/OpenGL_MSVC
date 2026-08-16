@@ -4,9 +4,11 @@
 #include "core/BuildInfo.h"
 #include "core/MeshData.h"
 #include "core/OrbitCamera.h"
+#include "core/RayPicking.h"
 #include "io/MeshLoader.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
+#include "renderer/SelectionMarker.h"
 #include "ui/ViewerUi.h"
 
 #include <glad/glad.h>
@@ -41,13 +43,15 @@ std::filesystem::path findShaderDirectory()
 
     for (const std::filesystem::path& candidate : candidates) {
         if (std::filesystem::is_regular_file(candidate / "mesh.vert") &&
-            std::filesystem::is_regular_file(candidate / "mesh.frag")) {
+            std::filesystem::is_regular_file(candidate / "mesh.frag") &&
+            std::filesystem::is_regular_file(candidate / "marker.vert") &&
+            std::filesystem::is_regular_file(candidate / "marker.frag")) {
             return candidate;
         }
     }
 
     throw std::runtime_error(
-        "Shader assets were not found. Expected assets/shaders/mesh.vert and mesh.frag.");
+        "Shader assets were not found. Expected mesh and marker shaders in assets/shaders.");
 }
 
 bool keyPressedOnce(GLFWwindow* window, int key, bool& wasPressed) noexcept
@@ -229,6 +233,9 @@ int Application::run(const ApplicationRunOptions& options)
     const ShaderProgram toothShader = ShaderProgram::fromFiles(
         shaderDirectory / "mesh.vert",
         shaderDirectory / "mesh.frag");
+    const SelectionMarker selectionMarker(
+        shaderDirectory / "marker.vert",
+        shaderDirectory / "marker.frag");
 
     printModelInformation(uiState.model);
     std::cout << "Shaders: " << shaderDirectory.string() << '\n';
@@ -247,7 +254,7 @@ int Application::run(const ApplicationRunOptions& options)
     camera.fit(modelBounds, initialAspectRatio);
     CameraController cameraController(window_, camera, modelBounds);
     ViewerUi viewerUi(window_);
-    std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
+    std::cout << "Controls: Left click select | Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
               << "Render modes: 1 Solid | 2 Wireframe | 3 Normals | Esc close\n";
 
     bool solidWasPressed = false;
@@ -301,6 +308,7 @@ int Application::run(const ApplicationRunOptions& options)
                 uiState.model = std::move(replacementInformation);
                 cameraController.setModelBounds(modelBounds);
                 camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+                uiState.selection.reset();
                 uiState.statusMessage = "Model loaded successfully.";
                 uiState.statusIsError = false;
                 printModelInformation(uiState.model);
@@ -344,6 +352,35 @@ int Application::run(const ApplicationRunOptions& options)
         const glm::mat4 model(1.0F);
         const glm::vec3 cameraPosition = camera.position();
 
+        if (const std::optional<PickRequest> request = cameraController.consumePickRequest();
+            request.has_value()) {
+            const ViewerRect& pickRect = viewerUi.viewerRect();
+            const float normalizedX = static_cast<float>(
+                (request->windowX - static_cast<double>(pickRect.windowX)) /
+                static_cast<double>(pickRect.windowWidth));
+            const float normalizedY = static_cast<float>(
+                (request->windowY - static_cast<double>(pickRect.windowY)) /
+                static_cast<double>(pickRect.windowHeight));
+            const Ray worldRay = makeWorldRayFromViewport(
+                std::clamp(normalizedX, 0.0F, 1.0F),
+                std::clamp(normalizedY, 0.0F, 1.0F),
+                view,
+                projection);
+            uiState.selection = pickMesh(worldRay, modelData);
+            if (uiState.selection.has_value()) {
+                std::ostringstream status;
+                status << "Selected triangle #" << uiState.selection->triangleIndex << '.';
+                uiState.statusMessage = status.str();
+                std::cout << "Selection: triangle #" << uiState.selection->triangleIndex
+                          << " at " << uiState.selection->position.x << ", "
+                          << uiState.selection->position.y << ", "
+                          << uiState.selection->position.z << '\n';
+            } else {
+                uiState.statusMessage = "Selection cleared: no surface at click.";
+            }
+            uiState.statusIsError = false;
+        }
+
         glDisable(GL_SCISSOR_TEST);
         glViewport(0, 0, framebufferWidth, framebufferHeight);
         glClearColor(0.055F, 0.075F, 0.090F, 1.0F);
@@ -381,6 +418,9 @@ int Application::run(const ApplicationRunOptions& options)
         if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
+        if (uiState.selection.has_value()) {
+            selectionMarker.draw(uiState.selection->position, view, projection);
+        }
 
         glDisable(GL_SCISSOR_TEST);
         viewerUi.render();
@@ -412,7 +452,8 @@ int Application::run(const ApplicationRunOptions& options)
     const CameraInteractionStats& interactions = cameraController.stats();
     std::cout << "Camera input: " << interactions.orbitUpdates << " orbit, "
               << interactions.panUpdates << " pan, " << interactions.zoomEvents
-              << " zoom, " << interactions.fitRequests << " fit updates\n";
+              << " zoom, " << interactions.fitRequests << " fit, "
+              << interactions.selectionRequests << " selection requests\n";
     std::cout << "Render mode changes: " << renderModeChanges << '\n';
     std::cout << "Application loop exited cleanly.\n";
     return 0;

@@ -2,7 +2,7 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 Dear ImGui Properties 패널에서 STL/OBJ 메시와 렌더링 설정을 제어하는 단계입니다.
+현재 단계는 STL/OBJ 메시를 탐색하고 표면 삼각형을 정확히 선택하는 단계입니다.
 
 ## 목표 기능
 
@@ -27,7 +27,7 @@ Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치
 빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
 
 Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orbit, 가운데 드래그는 Pan,
-휠은 Zoom, `F`는 모델 맞춤입니다. 숫자 `1`, `2`, `3`으로 각각 Solid, Wireframe,
+왼쪽 짧은 클릭은 표면 선택, 휠은 Zoom, `F`는 모델 맞춤입니다. 숫자 `1`, `2`, `3`으로 각각 Solid, Wireframe,
 Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료합니다. Properties 패널에서는
 모델 정보, FPS, 상태·오류를 확인하고 색상, 조명, 광택, 렌더 모드를 즉시 조정할 수 있습니다.
 
@@ -66,6 +66,8 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] Blinn–Phong Solid/Wireframe/Normal Color 렌더 모드
 - [x] Assimp 기반 STL/OBJ 로딩, 법선·인덱스·노드 변환 전처리
 - [x] Dear ImGui Properties UI, Windows 모델 선택, 상태·오류 표시
+- [x] DPI 독립 Viewer Ray, AABB 가속, Moller-Trumbore 최근접 표면 Picking
+- [x] 클릭/드래그 구분, 선택 좌표·법선·삼각형 정보와 화면 마커
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),

@@ -46,14 +46,23 @@ void CameraController::update(
     const bool leftPressed = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
     const bool middlePressed = glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
 
+    if (const std::optional<PointerClick> click = leftClickGesture_.update(
+            leftPressed, allowMouseInput, cursorX, cursorY);
+        click.has_value()) {
+        pendingPickRequest_ = PickRequest{click->x, click->y};
+        ++stats_.selectionRequests;
+    }
+
     if (cursorInitialized_) {
         const float horizontalDelta = static_cast<float>(cursorX - lastCursorX_);
         const float verticalDelta = static_cast<float>(cursorY - lastCursorY_);
         const bool cursorMoved = horizontalDelta != 0.0F || verticalDelta != 0.0F;
 
-        if (allowMouseInput && leftPressed && leftWasPressed_ && cursorMoved) {
-            camera_.orbit(horizontalDelta, verticalDelta);
-            ++stats_.orbitUpdates;
+        if (leftPressed && leftWasPressed_ && leftClickGesture_.isDragging()) {
+            if (allowMouseInput && cursorMoved) {
+                camera_.orbit(horizontalDelta, verticalDelta);
+                ++stats_.orbitUpdates;
+            }
         } else if (allowMouseInput && middlePressed && middleWasPressed_ && cursorMoved) {
             int windowWidth = 0;
             int windowHeight = 0;
@@ -82,7 +91,7 @@ void CameraController::update(
     lastCursorX_ = cursorX;
     lastCursorY_ = cursorY;
     cursorInitialized_ = true;
-    leftWasPressed_ = allowMouseInput && leftPressed;
+    leftWasPressed_ = leftPressed;
     middleWasPressed_ = allowMouseInput && middlePressed;
     fitWasPressed_ = allowKeyboardInput && fitPressed;
 }
@@ -90,6 +99,13 @@ void CameraController::update(
 void CameraController::setModelBounds(const AxisAlignedBounds& modelBounds) noexcept
 {
     modelBounds_ = modelBounds;
+}
+
+std::optional<PickRequest> CameraController::consumePickRequest() noexcept
+{
+    std::optional<PickRequest> request = pendingPickRequest_;
+    pendingPickRequest_.reset();
+    return request;
 }
 
 const CameraInteractionStats& CameraController::stats() const noexcept

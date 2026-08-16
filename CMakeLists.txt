@@ -20,8 +20,10 @@ find_package(imgui CONFIG REQUIRED)
 
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
+    src/core/ClickGesture.cpp
     src/core/MeshData.cpp
     src/core/OrbitCamera.cpp
+    src/core/RayPicking.cpp
 )
 
 target_include_directories(dentalviz_core
@@ -58,6 +60,7 @@ add_executable(DentalViz
     src/platform/NativeFileDialog.cpp
     src/renderer/GpuMesh.cpp
     src/renderer/ShaderProgram.cpp
+    src/renderer/SelectionMarker.cpp
     src/ui/ViewerUi.cpp
     src/main.cpp
 )
@@ -86,8 +89,10 @@ if(BUILD_TESTING)
 
     add_executable(dentalviz_tests
         tests/MeshDataTests.cpp
+        tests/ClickGestureTests.cpp
         tests/MeshLoaderTests.cpp
         tests/OrbitCameraTests.cpp
+        tests/RayPickingTests.cpp
         tests/SmokeTests.cpp
         tests/ViewerRectTests.cpp
     )

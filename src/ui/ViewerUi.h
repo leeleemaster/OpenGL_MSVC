@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/MeshData.h"
+#include "core/RayPicking.h"
 
 #include <glm/vec3.hpp>
 
@@ -39,6 +40,7 @@ struct ViewerUiState {
     glm::vec3 lightPosition{3.2F, 4.0F, 4.5F};
     float shininess = 72.0F;
     float framesPerSecond = 0.0F;
+    std::optional<RayHit> selection;
     std::string statusMessage = "Viewer ready.";
     bool statusIsError = false;
 };
