@@ -14,9 +14,11 @@ option(DENTALVIZ_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
+    src/core/MeshData.cpp
 )
 
 target_include_directories(dentalviz_core
@@ -25,6 +27,7 @@ target_include_directories(dentalviz_core
 )
 
 target_compile_features(dentalviz_core PUBLIC cxx_std_20)
+target_link_libraries(dentalviz_core PUBLIC glm::glm)
 target_compile_definitions(dentalviz_core
     PRIVATE
         DENTALVIZ_VERSION="${PROJECT_VERSION}"
@@ -33,6 +36,8 @@ dentalviz_set_warnings(dentalviz_core)
 
 add_executable(DentalViz
     src/app/Application.cpp
+    src/renderer/GpuMesh.cpp
+    src/renderer/ShaderProgram.cpp
     src/main.cpp
 )
 target_link_libraries(DentalViz
@@ -49,6 +54,7 @@ if(BUILD_TESTING)
     find_package(Catch2 3 CONFIG REQUIRED)
 
     add_executable(dentalviz_tests
+        tests/MeshDataTests.cpp
         tests/SmokeTests.cpp
     )
     target_link_libraries(dentalviz_tests

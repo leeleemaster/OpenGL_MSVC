@@ -2,7 +2,7 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 재현 가능한 MSVC 빌드 환경 위에 OpenGL 애플리케이션 루프를 구성하는 단계입니다.
+현재 단계는 OpenGL 애플리케이션 루프에서 절차 생성 치아 메시를 렌더링하는 단계입니다.
 
 ## 목표 기능
 
@@ -39,11 +39,14 @@ Debug 실행 파일은 다음과 같이 실행합니다. 창은 `Escape` 키 또
 - [x] Catch2 Smoke Test
 - [x] Windows GitHub Actions 구성
 - [x] OpenGL Window와 Application Loop
+- [x] Indexed GPU Mesh와 Blinn–Phong 테스트 렌더링
+- [x] 절차 생성 치아의 법선·경계·인덱스 단위 테스트
+- [ ] Orbit/Pan/Zoom 카메라
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
 [`docs/coordinate-system.md`](docs/coordinate-system.md),
 [`docs/architecture.md`](docs/architecture.md)를 참고하세요. 실제 OpenGL 로컬 실행 결과는
-[`docs/verification/commit-02.md`](docs/verification/commit-02.md)에 기록되어 있습니다.
+[`docs/verification/`](docs/verification/)에 단계별로 기록되어 있습니다.
 
 ## 라이선스
 
