@@ -19,6 +19,9 @@
 - Picking transforms the world ray into model space and transforms the selected hit back
   into the coordinate space used by measurement and display.
 - Camera movement never changes the clipping plane relative to the model.
+- Clipping keeps the half-space `dot(modelPosition, normal) + distance <= 0` and discards
+  fragments in the positive half-space. The UI limits `distance` to the loaded model bounds.
+- Clipping Preview does not create cap geometry or imply that the open cut surface is filled.
 - Framebuffer size, window size, UI viewport bounds, and DPI scale are treated separately.
 
 ## Input policy

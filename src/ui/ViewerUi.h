@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/ClippingPlane.h"
 #include "core/MeshData.h"
 #include "core/PointMeasurement.h"
 
@@ -42,6 +43,7 @@ struct ViewerUiState {
     glm::vec3 lightPosition{3.2F, 4.0F, 4.5F};
     float shininess = 72.0F;
     float framesPerSecond = 0.0F;
+    ClippingPlane clippingPlane;
     PointMeasurement measurement;
     std::string statusMessage = "Viewer ready.";
     bool statusIsError = false;
@@ -68,6 +70,7 @@ struct ViewerRect {
 struct ViewerUiActions {
     std::optional<std::filesystem::path> modelToLoad;
     bool resetCamera = false;
+    bool resetClippingPlane = false;
     bool resetMeasurement = false;
 };
 

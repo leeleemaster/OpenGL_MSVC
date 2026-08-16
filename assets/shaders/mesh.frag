@@ -2,17 +2,26 @@
 
 in vec3 worldPosition;
 in vec3 worldNormal;
+in vec3 modelPosition;
 
 uniform vec3 uBaseColor;
 uniform vec3 uLightPosition;
 uniform vec3 uCameraPosition;
 uniform float uShininess;
 uniform int uRenderMode;
+uniform int uClipEnabled;
+uniform vec3 uClipNormal;
+uniform float uClipDistance;
 
 out vec4 fragmentColor;
 
 void main()
 {
+    if (uClipEnabled != 0 &&
+        dot(modelPosition, uClipNormal) + uClipDistance > 0.0) {
+        discard;
+    }
+
     vec3 normal = normalize(worldNormal);
     if (uRenderMode == 2) {
         fragmentColor = vec4(normal * 0.5 + 0.5, 1.0);

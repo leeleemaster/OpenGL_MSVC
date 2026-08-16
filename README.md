@@ -2,7 +2,7 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 STL/OBJ 메시를 탐색하고 표면 삼각형을 정확히 선택하는 단계입니다.
+현재 단계는 STL/OBJ 메시를 탐색·측정하고 모델 좌표 평면으로 내부를 미리 보는 단계입니다.
 
 ## 목표 기능
 
@@ -32,6 +32,10 @@ Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orb
 다시 시작합니다. 숫자 `1`, `2`, `3`으로 각각 Solid, Wireframe,
 Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료합니다. Properties 패널에서는
 모델 정보, FPS, 상태·오류를 확인하고 색상, 조명, 광택, 렌더 모드를 즉시 조정할 수 있습니다.
+`Clipping Preview` 탭에서는 클리핑을 켜고 +X/+Y/+Z 법선과 평면 거리 `d`를 조절할 수
+있습니다. 평면은 모델 좌표계에 고정되므로 카메라를 움직여도 모델에 대한 위치가 바뀌지
+않습니다. 이 기능은 Fragment Shader가 평면 바깥 조각을 버리는 미리보기이며, 잘린 단면을
+새 형상으로 생성하거나 채우지는 않습니다.
 
 ```powershell
 ./out/build/msvc/Debug/DentalViz.exe
@@ -71,6 +75,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] DPI 독립 Viewer Ray, AABB 가속, Moller-Trumbore 최근접 표면 Picking
 - [x] 클릭/드래그 구분, 선택 좌표·법선·삼각형 정보와 화면 마커
 - [x] 두 표면점 A/B의 3D 직선거리, 연결선, 거리 라벨과 측정 초기화
+- [x] 모델 좌표 기반 +X/+Y/+Z Plane Clipping Preview와 실시간 거리 조절
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),

@@ -21,6 +21,7 @@ find_package(imgui CONFIG REQUIRED)
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
     src/core/ClickGesture.cpp
+    src/core/ClippingPlane.cpp
     src/core/MeshData.cpp
     src/core/OrbitCamera.cpp
     src/core/PointMeasurement.cpp
@@ -89,6 +90,7 @@ if(BUILD_TESTING)
     find_package(Catch2 3 CONFIG REQUIRED)
 
     add_executable(dentalviz_tests
+        tests/ClippingPlaneTests.cpp
         tests/MeshDataTests.cpp
         tests/ClickGestureTests.cpp
         tests/MeshLoaderTests.cpp

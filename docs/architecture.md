@@ -16,8 +16,9 @@ dentalviz_tests
 ```
 
 `dentalviz_core` must not require an OpenGL context. Geometry intersection, measurement,
-bounds, camera math that can be isolated, and the optional MiniShader compiler belong in
-testable code. OpenGL handles remain inside renderer-side RAII types.
+bounds, model-space clipping-plane math, camera math that can be isolated, and the optional
+MiniShader compiler belong in testable code. OpenGL handles remain inside renderer-side RAII
+types.
 
 `dentalviz_io` converts Assimp scenes, node transforms, positions, normals, and triangle
 indices into the same `MeshData` used by procedural geometry. File parsing remains independent
@@ -49,6 +50,10 @@ becomes necessary.
 - Runtime shaders are loaded from `assets/shaders` and copied beside each built executable.
 - A shader replacement becomes active only after compile and link succeed.
 - UI communicates commands and state; it does not own renderer resources.
+- Clipping state stores a model-space axis normal and plane distance. The mesh vertex shader
+  forwards the original model position and the fragment shader discards only the positive
+  half-space, so camera changes cannot move the plane relative to the model. No cap geometry
+  is generated.
 
 ## Release linkage
 

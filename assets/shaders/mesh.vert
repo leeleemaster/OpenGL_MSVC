@@ -9,10 +9,12 @@ uniform mat4 uProjection;
 
 out vec3 worldPosition;
 out vec3 worldNormal;
+out vec3 modelPosition;
 
 void main()
 {
     vec4 position = uModel * vec4(aPosition, 1.0);
+    modelPosition = aPosition;
     worldPosition = position.xyz;
     worldNormal = mat3(transpose(inverse(uModel))) * aNormal;
     gl_Position = uProjection * uView * position;

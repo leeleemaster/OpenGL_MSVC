@@ -300,37 +300,99 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         ImGui::TextWrapped("%s", state.statusMessage.c_str());
         ImGui::PopStyleColor();
 
-        ImGui::SeparatorText("3D Straight-Line Measurement");
-        if (state.measurement.pointA().has_value()) {
-            const RayHit& pointA = state.measurement.pointA().value();
-            ImGui::Text(
-                "A  %.3f, %.3f, %.3f",
-                static_cast<double>(pointA.position.x),
-                static_cast<double>(pointA.position.y),
-                static_cast<double>(pointA.position.z));
-        } else {
-            ImGui::TextDisabled("Select Point A on the model surface.");
+        ImGui::SeparatorText("Tools");
+        if (ImGui::BeginTabBar("Viewer tools")) {
+            if (ImGui::BeginTabItem("Measurement")) {
+                if (state.measurement.pointA().has_value()) {
+                    const RayHit& pointA = state.measurement.pointA().value();
+                    ImGui::Text(
+                        "A  %.3f, %.3f, %.3f",
+                        static_cast<double>(pointA.position.x),
+                        static_cast<double>(pointA.position.y),
+                        static_cast<double>(pointA.position.z));
+                } else {
+                    ImGui::TextDisabled("Select Point A on the model surface.");
+                }
+                if (state.measurement.pointB().has_value()) {
+                    const RayHit& pointB = state.measurement.pointB().value();
+                    ImGui::Text(
+                        "B  %.3f, %.3f, %.3f",
+                        static_cast<double>(pointB.position.x),
+                        static_cast<double>(pointB.position.y),
+                        static_cast<double>(pointB.position.z));
+                } else if (state.measurement.pointA().has_value()) {
+                    ImGui::TextDisabled("Select Point B on the model surface.");
+                }
+                if (const std::optional<float> distance = state.measurement.distance();
+                    distance.has_value()) {
+                    ImGui::TextColored(
+                        ImVec4(0.98F, 0.80F, 0.24F, 1.0F),
+                        "3D 직선거리  %.3f model units",
+                        static_cast<double>(distance.value()));
+                }
+                ImGui::TextDisabled("Source scale is not inferred.");
+                actions.resetMeasurement =
+                    ImGui::Button("Reset Measurement", ImVec2(-1.0F, 0.0F));
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Clipping Preview")) {
+                bool clippingEnabled = state.clippingPlane.enabled();
+                if (ImGui::Checkbox("Enable clipping", &clippingEnabled)) {
+                    state.clippingPlane.setEnabled(clippingEnabled);
+                }
+
+                if (ImGui::BeginTable(
+                        "Clipping controls", 2, ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn(
+                        "Property", ImGuiTableColumnFlags_WidthFixed, 88.0F);
+                    ImGui::TableSetupColumn(
+                        "Value", ImGuiTableColumnFlags_WidthStretch);
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextUnformatted("Normal axis");
+                    ImGui::TableSetColumnIndex(1);
+                    int selectedAxis = static_cast<int>(state.clippingPlane.axis());
+                    constexpr const char* clipAxes[] = {"+X", "+Y", "+Z"};
+                    ImGui::SetNextItemWidth(-1.0F);
+                    if (ImGui::Combo("##Clip normal axis", &selectedAxis, clipAxes, 3)) {
+                        state.clippingPlane.setAxis(
+                            static_cast<ClipAxis>(selectedAxis), state.model.bounds);
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextUnformatted("Distance d");
+                    ImGui::TableSetColumnIndex(1);
+                    const auto [minimumDistance, maximumDistance] =
+                        state.clippingPlane.distanceRange(state.model.bounds);
+                    float planeDistance = state.clippingPlane.distance();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    if (ImGui::SliderFloat(
+                            "##Clip distance",
+                            &planeDistance,
+                            minimumDistance,
+                            maximumDistance,
+                            "%.3f")) {
+                        state.clippingPlane.setDistance(
+                            planeDistance, state.model.bounds);
+                    }
+                    ImGui::EndTable();
+                }
+
+                ImGui::TextDisabled(
+                    "Model space: dot(p, %s) + d <= 0 kept",
+                    clipAxisName(state.clippingPlane.axis()));
+                ImGui::TextWrapped("Preview only: the cut surface is not capped or filled.");
+                actions.resetClippingPlane =
+                    ImGui::Button("Reset Plane", ImVec2(-1.0F, 0.0F));
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
         }
-        if (state.measurement.pointB().has_value()) {
-            const RayHit& pointB = state.measurement.pointB().value();
-            ImGui::Text(
-                "B  %.3f, %.3f, %.3f",
-                static_cast<double>(pointB.position.x),
-                static_cast<double>(pointB.position.y),
-                static_cast<double>(pointB.position.z));
-        } else if (state.measurement.pointA().has_value()) {
-            ImGui::TextDisabled("Select Point B on the model surface.");
-        }
-        if (const std::optional<float> distance = state.measurement.distance();
-            distance.has_value()) {
-            ImGui::TextColored(
-                ImVec4(0.98F, 0.80F, 0.24F, 1.0F),
-                "3D 직선거리  %.3f model units",
-                static_cast<double>(distance.value()));
-        }
-        ImGui::TextDisabled("Source scale is not inferred.");
-        actions.resetMeasurement =
-            ImGui::Button("Reset Measurement", ImVec2(-1.0F, 0.0F));
 
         ImGui::SeparatorText("Controls");
         ImGui::TextDisabled("LMB A/B Select | Drag Orbit | MMB Pan");

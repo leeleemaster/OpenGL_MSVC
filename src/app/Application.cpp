@@ -228,6 +228,7 @@ int Application::run(const ApplicationRunOptions& options)
     }
 
     AxisAlignedBounds modelBounds = modelData.bounds();
+    uiState.clippingPlane.reset(modelBounds);
     GpuMesh gpuMesh(modelData);
     const std::filesystem::path shaderDirectory = findShaderDirectory();
     const ShaderProgram toothShader = ShaderProgram::fromFiles(
@@ -310,6 +311,7 @@ int Application::run(const ApplicationRunOptions& options)
                 uiState.model = std::move(replacementInformation);
                 cameraController.setModelBounds(modelBounds);
                 camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+                uiState.clippingPlane.reset(modelBounds);
                 uiState.measurement.reset();
                 uiState.statusMessage = "Model loaded successfully.";
                 uiState.statusIsError = false;
@@ -323,6 +325,11 @@ int Application::run(const ApplicationRunOptions& options)
 
         if (uiActions.resetCamera) {
             camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+        }
+        if (uiActions.resetClippingPlane) {
+            uiState.clippingPlane.reset(modelBounds);
+            uiState.statusMessage = "Clipping plane reset to the model center.";
+            uiState.statusIsError = false;
         }
         if (uiActions.resetMeasurement) {
             uiState.measurement.reset();
@@ -427,6 +434,10 @@ int Application::run(const ApplicationRunOptions& options)
         toothShader.setVector3("uCameraPosition", cameraPosition);
         toothShader.setFloat("uShininess", uiState.shininess);
         toothShader.setInteger("uRenderMode", static_cast<int>(uiState.renderMode));
+        toothShader.setInteger(
+            "uClipEnabled", uiState.clippingPlane.enabled() ? 1 : 0);
+        toothShader.setVector3("uClipNormal", uiState.clippingPlane.normal());
+        toothShader.setFloat("uClipDistance", uiState.clippingPlane.distance());
 
         if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
