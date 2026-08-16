@@ -26,6 +26,8 @@ struct MeshData {
 
     [[nodiscard]] AxisAlignedBounds bounds() const;
     [[nodiscard]] bool hasValidIndices() const noexcept;
+    [[nodiscard]] bool hasFiniteVertexData() const noexcept;
+    [[nodiscard]] bool isRenderable() const noexcept;
 };
 
 void recalculateSmoothNormals(MeshData& mesh);

@@ -4,6 +4,7 @@
 #include "core/BuildInfo.h"
 #include "core/MeshData.h"
 #include "core/OrbitCamera.h"
+#include "core/PathText.h"
 #include "core/PointMeasurement.h"
 #include "core/RayPicking.h"
 #include "io/MeshLoader.h"
@@ -22,13 +23,16 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -39,19 +43,37 @@ std::filesystem::path findShaderDirectory()
 {
     const std::filesystem::path sourceDirectory =
         std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-    const std::array candidates{
-        dentalviz::executableDirectory() / "assets" / "shaders",
-        std::filesystem::current_path() / "assets" / "shaders",
-        sourceDirectory / "assets" / "shaders",
+    std::vector<std::filesystem::path> candidates;
+    candidates.reserve(3);
+    candidates.push_back(dentalviz::executableDirectory() / "assets" / "shaders");
+    std::error_code currentPathError;
+    const std::filesystem::path currentDirectory =
+        std::filesystem::current_path(currentPathError);
+    if (!currentPathError) {
+        candidates.push_back(currentDirectory / "assets" / "shaders");
+    }
+    candidates.push_back(sourceDirectory / "assets" / "shaders");
+
+    constexpr std::array requiredShaderFiles{
+        "mesh.vert",
+        "mesh.frag",
+        "marker.vert",
+        "marker.frag",
+        "measurement_line.vert",
+        "measurement_line.frag",
     };
 
     for (const std::filesystem::path& candidate : candidates) {
-        if (std::filesystem::is_regular_file(candidate / "mesh.vert") &&
-            std::filesystem::is_regular_file(candidate / "mesh.frag") &&
-            std::filesystem::is_regular_file(candidate / "marker.vert") &&
-            std::filesystem::is_regular_file(candidate / "marker.frag") &&
-            std::filesystem::is_regular_file(candidate / "measurement_line.vert") &&
-            std::filesystem::is_regular_file(candidate / "measurement_line.frag")) {
+        const bool complete = std::all_of(
+            requiredShaderFiles.begin(),
+            requiredShaderFiles.end(),
+            [&candidate](const char* fileName) {
+                std::error_code fileError;
+                const bool regular =
+                    std::filesystem::is_regular_file(candidate / fileName, fileError);
+                return regular && !fileError;
+            });
+        if (complete) {
             return candidate;
         }
     }
@@ -85,12 +107,6 @@ const char* glString(GLenum name)
     return value != nullptr ? reinterpret_cast<const char*>(value) : "Unavailable";
 }
 
-std::string pathToUtf8(const std::filesystem::path& path)
-{
-    const std::u8string value = path.u8string();
-    return std::string(reinterpret_cast<const char*>(value.data()), value.size());
-}
-
 dentalviz::ViewerModelInfo proceduralModelInfo(const dentalviz::MeshData& mesh)
 {
     dentalviz::ViewerModelInfo information;
@@ -106,7 +122,7 @@ dentalviz::ViewerModelInfo loadedModelInfo(
     const dentalviz::MeshLoadResult& result)
 {
     dentalviz::ViewerModelInfo information;
-    information.name = pathToUtf8(result.sourcePath.filename());
+    information.name = dentalviz::pathToUtf8(result.sourcePath.filename());
     information.sourcePath = result.sourcePath;
     information.vertexCount = mesh.vertices.size();
     information.triangleCount = mesh.indices.size() / 3;
@@ -127,7 +143,7 @@ void printModelInformation(const dentalviz::ViewerModelInfo& information)
               << "Bounds size: " << boundsSize.x << ", "
               << boundsSize.y << ", " << boundsSize.z << '\n';
     if (information.loadedFromFile) {
-        std::cout << "Source: " << pathToUtf8(information.sourcePath) << '\n'
+        std::cout << "Source: " << dentalviz::pathToUtf8(information.sourcePath) << '\n'
                   << "Source meshes: " << information.sourceMeshCount << '\n'
                   << "Load time: " << std::fixed << std::setprecision(3)
                   << information.loadMilliseconds << " ms\n";
@@ -212,6 +228,15 @@ Application::~Application()
 
 int Application::run(const ApplicationRunOptions& options)
 {
+    if (options.maximumRuntimeSeconds.has_value() &&
+        (!std::isfinite(options.maximumRuntimeSeconds.value()) ||
+         options.maximumRuntimeSeconds.value() <= 0.0)) {
+        throw std::invalid_argument("Maximum runtime must be a positive finite number.");
+    }
+    if (options.modelPath.has_value() && options.modelPath->empty()) {
+        throw std::invalid_argument("Model path must not be empty.");
+    }
+
     MeshData modelData = makeProceduralTooth();
     ViewerUiState uiState;
     uiState.model = proceduralModelInfo(modelData);
@@ -244,7 +269,7 @@ int Application::run(const ApplicationRunOptions& options)
         shaderDirectory / "measurement_line.frag");
 
     printModelInformation(uiState.model);
-    std::cout << "Shaders: " << shaderDirectory.string() << '\n';
+    std::cout << "Shaders: " << pathToUtf8(shaderDirectory) << '\n';
 
     int startupWindowWidth = 0;
     int startupWindowHeight = 0;

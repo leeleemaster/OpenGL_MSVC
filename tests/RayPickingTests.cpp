@@ -6,6 +6,9 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <limits>
+#include <stdexcept>
+
 namespace {
 
 dentalviz::Vertex vertex(float x, float y, float z)
@@ -115,4 +118,22 @@ TEST_CASE("mesh picking returns the closest positive triangle", "[picking]")
     CHECK(hit->triangleIndex == 1);
     CHECK(hit->distance == Catch::Approx(2.0F));
     CHECK(hit->position.z == Catch::Approx(0.0F));
+}
+
+TEST_CASE("mesh picking rejects non-finite vertex data", "[picking][invalid-input]")
+{
+    dentalviz::MeshData mesh;
+    mesh.vertices = {
+        vertex(-1.0F, -1.0F, 0.0F),
+        vertex(1.0F, -1.0F, 0.0F),
+        vertex(0.0F, 1.0F, 0.0F),
+    };
+    mesh.indices = {0, 1, 2};
+    mesh.vertices[0].position.x = std::numeric_limits<float>::quiet_NaN();
+
+    CHECK_THROWS_AS(
+        dentalviz::pickMesh(
+            {{0.0F, 0.0F, 2.0F}, {0.0F, 0.0F, -1.0F}},
+            mesh),
+        std::invalid_argument);
 }

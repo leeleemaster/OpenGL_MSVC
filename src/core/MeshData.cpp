@@ -3,6 +3,7 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <limits>
@@ -28,6 +29,13 @@ constexpr std::array<ToothProfilePoint, 9> toothProfile{{
 }};
 
 constexpr float pi = 3.14159265358979323846F;
+
+bool isFinite(const glm::vec3& value) noexcept
+{
+    return std::isfinite(value.x) &&
+           std::isfinite(value.y) &&
+           std::isfinite(value.z);
+}
 
 } // namespace
 
@@ -57,6 +65,9 @@ AxisAlignedBounds MeshData::bounds() const
     };
 
     for (const Vertex& vertex : vertices) {
+        if (!isFinite(vertex.position)) {
+            throw std::invalid_argument("Cannot calculate bounds for non-finite vertex positions.");
+        }
         result.minimum = glm::min(result.minimum, vertex.position);
         result.maximum = glm::max(result.maximum, vertex.position);
     }
@@ -77,10 +88,27 @@ bool MeshData::hasValidIndices() const noexcept
     return true;
 }
 
+bool MeshData::hasFiniteVertexData() const noexcept
+{
+    return std::all_of(vertices.begin(), vertices.end(), [](const Vertex& vertex) {
+        return isFinite(vertex.position) && isFinite(vertex.normal);
+    });
+}
+
+bool MeshData::isRenderable() const noexcept
+{
+    return hasValidIndices() && hasFiniteVertexData();
+}
+
 void recalculateSmoothNormals(MeshData& mesh)
 {
     if (!mesh.hasValidIndices()) {
         throw std::runtime_error("Cannot calculate normals for invalid mesh indices.");
+    }
+    if (!std::all_of(mesh.vertices.begin(), mesh.vertices.end(), [](const Vertex& vertex) {
+            return isFinite(vertex.position);
+        })) {
+        throw std::invalid_argument("Cannot calculate normals for non-finite vertex positions.");
     }
 
     for (Vertex& vertex : mesh.vertices) {
@@ -118,6 +146,13 @@ MeshData makeProceduralTooth(std::uint32_t radialSegments)
 {
     if (radialSegments < 8) {
         throw std::invalid_argument("A procedural tooth requires at least 8 radial segments.");
+    }
+
+    constexpr std::uint32_t maximumRadialSegments =
+        (std::numeric_limits<std::uint32_t>::max() - 2U) /
+        static_cast<std::uint32_t>(toothProfile.size());
+    if (radialSegments > maximumRadialSegments) {
+        throw std::overflow_error("Procedural tooth exceeds the 32-bit index limit.");
     }
 
     MeshData mesh;

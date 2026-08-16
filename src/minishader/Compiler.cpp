@@ -10,8 +10,24 @@
 
 namespace dentalviz::minishader {
 
+namespace {
+
+constexpr std::size_t maximumSourceBytes = 64U * 1024U;
+
+} // namespace
+
 CompilationResult Compiler::compile(std::string_view source)
 {
+    if (source.size() > maximumSourceBytes) {
+        std::vector<Diagnostic> diagnostics;
+        diagnostics.push_back(Diagnostic{
+            DiagnosticPhase::Lexical,
+            SourceLocation{},
+            "Source exceeds the 65536-byte safety limit.",
+        });
+        return CompilationResult{{}, std::move(diagnostics), {}};
+    }
+
     LexResult lexResult = Lexer::scan(source);
     if (!lexResult.succeeded()) {
         return CompilationResult{{}, std::move(lexResult.diagnostics), {}};

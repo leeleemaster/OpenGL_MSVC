@@ -1,5 +1,6 @@
 #include "ui/ViewerUi.h"
 
+#include "core/PathText.h"
 #include "platform/NativeFileDialog.h"
 
 #include <GLFW/glfw3.h>
@@ -29,12 +30,6 @@ constexpr std::string_view defaultMiniShaderSource =
     "    let intensity = 0.2 + diffuse;\n"
     "    output = baseColor * intensity;\n"
     "}";
-
-std::string pathToUtf8(const std::filesystem::path& path)
-{
-    const std::u8string value = path.u8string();
-    return std::string(reinterpret_cast<const char*>(value.data()), value.size());
-}
 
 void configureStyle()
 {

@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <iostream>
 #include <locale>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <optional>
@@ -67,6 +68,11 @@ struct CaseResult {
     std::vector<double> frameMilliseconds;
     std::vector<double> pickingMilliseconds;
     std::size_t pickingHitCount = 0;
+};
+
+struct CommandLine {
+    std::filesystem::path outputDirectory;
+    bool selfCheckOnly = false;
 };
 
 class BenchmarkContext final {
@@ -467,15 +473,108 @@ void writeSummary(const std::filesystem::path& path, const std::vector<CaseResul
            << "Every individual measured sample is stored in `benchmark-raw.csv`.\n";
 }
 
-[[nodiscard]] std::filesystem::path parseOutputDirectory(int argc, char* argv[])
+[[nodiscard]] CommandLine parseCommandLine(int argc, char* argv[])
 {
     if (argc == 1) {
-        return std::filesystem::path(DENTALVIZ_SOURCE_DIR) / "out" / "benchmark";
+        return {
+            std::filesystem::path(DENTALVIZ_SOURCE_DIR) / "out" / "benchmark",
+            false,
+        };
+    }
+    if (argc == 2 && std::string_view(argv[1]) == "--self-check") {
+        return {{}, true};
     }
     if (argc == 3 && std::string_view(argv[1]) == "--output") {
-        return std::filesystem::absolute(std::filesystem::path(argv[2])).lexically_normal();
+        return {
+            std::filesystem::absolute(std::filesystem::path(argv[2])).lexically_normal(),
+            false,
+        };
     }
-    throw std::invalid_argument("Usage: dentalviz_benchmark [--output <directory>]");
+    throw std::invalid_argument(
+        "Usage: dentalviz_benchmark [--output <directory> | --self-check]");
+}
+
+int runRuntimeSelfCheck()
+{
+    while (glGetError() != GL_NO_ERROR) {
+    }
+
+    const std::filesystem::path shaderDirectory(DENTALVIZ_SHADER_DIR);
+    dentalviz::ShaderProgram activeShader = dentalviz::ShaderProgram::fromFiles(
+        shaderDirectory / "mesh.vert",
+        shaderDirectory / "mesh.frag");
+    activeShader.use();
+    GLint lastKnownGoodProgram = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &lastKnownGoodProgram);
+    if (lastKnownGoodProgram == 0) {
+        throw std::runtime_error("Runtime check did not activate the baseline shader.");
+    }
+
+    constexpr std::string_view invalidFragment =
+        "#version 330 core\n"
+        "out vec4 FragColor;\n"
+        "void main() { FragColor = vec4(1.0) broken; }\n";
+    bool invalidShaderRejected = false;
+    try {
+        dentalviz::ShaderProgram replacement =
+            dentalviz::ShaderProgram::fromVertexFileAndFragmentSource(
+                shaderDirectory / "mesh.vert",
+                invalidFragment,
+                "intentional invalid runtime-check fragment");
+        activeShader = std::move(replacement);
+    } catch (const std::runtime_error&) {
+        invalidShaderRejected = true;
+    }
+    if (!invalidShaderRejected) {
+        throw std::runtime_error("Runtime check unexpectedly accepted invalid GLSL.");
+    }
+    activeShader.use();
+    GLint programAfterFailure = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &programAfterFailure);
+    if (programAfterFailure != lastKnownGoodProgram) {
+        throw std::runtime_error("Invalid GLSL replaced the Last Known Good shader.");
+    }
+
+    dentalviz::MeshData invalidMesh = dentalviz::makeProceduralTooth(8);
+    invalidMesh.vertices.front().position.x = std::numeric_limits<float>::quiet_NaN();
+    bool invalidMeshRejected = false;
+    try {
+        dentalviz::GpuMesh rejectedUpload(invalidMesh);
+    } catch (const std::invalid_argument&) {
+        invalidMeshRejected = true;
+    }
+    if (!invalidMeshRejected) {
+        throw std::runtime_error("Runtime check unexpectedly uploaded non-finite mesh data.");
+    }
+
+    const dentalviz::MeshData validMesh = dentalviz::makeProceduralTooth(32);
+    dentalviz::GpuMesh firstMesh(validMesh);
+    dentalviz::GpuMesh movedMesh(std::move(firstMesh));
+    firstMesh.draw();
+    dentalviz::GpuMesh assignedMesh(validMesh);
+    assignedMesh = std::move(movedMesh);
+    movedMesh.draw();
+    assignedMesh.draw();
+
+    dentalviz::ShaderProgram movedShader(std::move(activeShader));
+    activeShader.use();
+    movedShader.use();
+    dentalviz::ShaderProgram assignedShader = dentalviz::ShaderProgram::fromFiles(
+        shaderDirectory / "mesh.vert",
+        shaderDirectory / "mesh.frag");
+    assignedShader = std::move(movedShader);
+    movedShader.use();
+    assignedShader.use();
+
+    glFinish();
+    if (const GLenum error = glGetError(); error != GL_NO_ERROR) {
+        throw std::runtime_error(
+            "OpenGL error after runtime self-check: " + std::to_string(error));
+    }
+
+    std::cout << "Runtime self-check passed: invalid mesh rejected, invalid GLSL rejected, "
+                 "Last Known Good retained, moved-from GL resources safe.\n";
+    return 0;
 }
 
 int runBenchmark(const std::filesystem::path& outputDirectory, GLFWwindow* window)
@@ -514,9 +613,12 @@ int runBenchmark(const std::filesystem::path& outputDirectory, GLFWwindow* windo
 int main(int argc, char* argv[])
 {
     try {
-        const std::filesystem::path outputDirectory = parseOutputDirectory(argc, argv);
+        const CommandLine commandLine = parseCommandLine(argc, argv);
         BenchmarkContext context;
-        return runBenchmark(outputDirectory, context.window());
+        if (commandLine.selfCheckOnly) {
+            return runRuntimeSelfCheck();
+        }
+        return runBenchmark(commandLine.outputDirectory, context.window());
     } catch (const std::exception& error) {
         std::cerr << "DentalViz benchmark failed: " << error.what() << '\n';
         return 1;

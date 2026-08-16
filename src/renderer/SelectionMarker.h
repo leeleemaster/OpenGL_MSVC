@@ -38,6 +38,8 @@ public:
         const glm::mat4& projection) const;
 
 private:
+    void release() noexcept;
+
     ShaderProgram markerShader_;
     ShaderProgram lineShader_;
     GLuint markerVertexArray_ = 0;

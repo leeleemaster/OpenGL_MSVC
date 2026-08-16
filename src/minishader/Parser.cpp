@@ -10,6 +10,8 @@ namespace {
 struct ParseAbort {
 };
 
+constexpr std::size_t maximumExpressionDepth = 128U;
+
 [[nodiscard]] std::string expectedTokenText(TokenKind kind)
 {
     switch (kind) {
@@ -189,7 +191,18 @@ private:
 
     [[nodiscard]] std::unique_ptr<Expression> parseExpression()
     {
-        return parseAdditive();
+        if (expressionDepth_ >= maximumExpressionDepth) {
+            diagnostics_.push_back(Diagnostic{
+                DiagnosticPhase::Syntax,
+                peek().location,
+                "Expression nesting exceeds the safety limit of 128.",
+            });
+            throw ParseAbort{};
+        }
+        ++expressionDepth_;
+        auto expression = parseAdditive();
+        --expressionDepth_;
+        return expression;
     }
 
     [[nodiscard]] std::unique_ptr<Expression> parseAdditive()
@@ -257,6 +270,7 @@ private:
 
     const std::vector<Token>& tokens_;
     std::size_t current_ = 0;
+    std::size_t expressionDepth_ = 0;
     std::vector<Diagnostic> diagnostics_;
 };
 

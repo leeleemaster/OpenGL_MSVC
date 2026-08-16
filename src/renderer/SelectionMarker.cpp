@@ -1,6 +1,7 @@
 #include "renderer/SelectionMarker.h"
 
 #include <array>
+#include <stdexcept>
 
 namespace dentalviz {
 
@@ -16,6 +17,10 @@ SelectionMarker::SelectionMarker(
 
     glGenVertexArrays(1, &lineVertexArray_);
     glGenBuffers(1, &lineVertexBuffer_);
+    if (markerVertexArray_ == 0 || lineVertexArray_ == 0 || lineVertexBuffer_ == 0) {
+        release();
+        throw std::runtime_error("OpenGL could not allocate selection marker objects.");
+    }
     glBindVertexArray(lineVertexArray_);
     glBindBuffer(GL_ARRAY_BUFFER, lineVertexBuffer_);
     glBufferData(
@@ -30,6 +35,11 @@ SelectionMarker::SelectionMarker(
 
 SelectionMarker::~SelectionMarker()
 {
+    release();
+}
+
+void SelectionMarker::release() noexcept
+{
     if (lineVertexBuffer_ != 0) {
         glDeleteBuffers(1, &lineVertexBuffer_);
     }
@@ -39,6 +49,9 @@ SelectionMarker::~SelectionMarker()
     if (markerVertexArray_ != 0) {
         glDeleteVertexArrays(1, &markerVertexArray_);
     }
+    lineVertexBuffer_ = 0;
+    lineVertexArray_ = 0;
+    markerVertexArray_ = 0;
 }
 
 void SelectionMarker::drawMarker(

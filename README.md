@@ -140,6 +140,7 @@ VSync-off Swap을 포함한 CPU 시간입니다. 두 수치를 GPU 실행 시간
 - [x] MiniShader AST 기반 결정적 GLSL 생성, Source Mapping과 Golden Test
 - [x] MiniShader Editor, Runtime Compile & Apply와 Last Known Good Shader
 - [x] 10만/50만 삼각형 Release 렌더링·Picking 성능 원시 결과와 요약표
+- [x] NaN/과대 입력 방어, OpenGL 자원 이동·해제와 잘못된 Shader/Model 복구 검증
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),

@@ -2,6 +2,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <string>
 #include <string_view>
 
 namespace {
@@ -62,4 +63,32 @@ TEST_CASE("MiniShader compiler returns multiple semantic diagnostics without GLS
     CHECK(result.diagnostics[2].phase == DiagnosticPhase::Semantic);
     CHECK(result.fragmentSource.empty());
     CHECK(formatDiagnostics(result.diagnostics).find("line 1, column") != std::string::npos);
+}
+
+TEST_CASE("MiniShader compiler rejects oversized source before token allocation", "[minishader][compiler][invalid-input]")
+{
+    const CompilationResult result = Compiler::compile(std::string(65'537, 'a'));
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.diagnostics.size() == 1);
+    CHECK(result.diagnostics[0].phase == DiagnosticPhase::Lexical);
+    CHECK(result.diagnostics[0].message.find("65536-byte") != std::string::npos);
+    CHECK(result.fragmentSource.empty());
+}
+
+TEST_CASE("MiniShader compiler rejects excessive expression nesting", "[minishader][compiler][invalid-input]")
+{
+    std::string source = "material Deep { output = ";
+    source.append(129, '(');
+    source += '1';
+    source.append(129, ')');
+    source += "; }";
+
+    const CompilationResult result = Compiler::compile(source);
+
+    REQUIRE_FALSE(result.succeeded());
+    REQUIRE(result.diagnostics.size() == 1);
+    CHECK(result.diagnostics[0].phase == DiagnosticPhase::Syntax);
+    CHECK(result.diagnostics[0].message.find("nesting") != std::string::npos);
+    CHECK(result.fragmentSource.empty());
 }

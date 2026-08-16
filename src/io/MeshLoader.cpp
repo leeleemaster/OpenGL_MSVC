@@ -1,5 +1,7 @@
 #include "io/MeshLoader.h"
 
+#include "core/PathText.h"
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -20,32 +22,31 @@
 
 namespace {
 
-std::string pathToUtf8(const std::filesystem::path& path)
-{
-    const std::u8string value = path.u8string();
-    return std::string(reinterpret_cast<const char*>(value.data()), value.size());
-}
-
 std::vector<char> readMeshFile(const std::filesystem::path& path)
 {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file) {
-        throw std::runtime_error("Mesh file could not be opened: " + pathToUtf8(path));
+        throw std::runtime_error(
+            "Mesh file could not be opened: " + dentalviz::pathToUtf8(path));
     }
 
     const std::streampos endPosition = file.tellg();
     if (endPosition <= 0) {
-        throw std::runtime_error("Mesh file is empty or unreadable: " + pathToUtf8(path));
+        throw std::runtime_error(
+            "Mesh file is empty or unreadable: " + dentalviz::pathToUtf8(path));
     }
     const auto byteCount = static_cast<std::uintmax_t>(endPosition);
-    if (byteCount > std::numeric_limits<std::size_t>::max()) {
-        throw std::overflow_error("Mesh file is too large to load: " + pathToUtf8(path));
+    if (byteCount > std::numeric_limits<std::size_t>::max() ||
+        byteCount > static_cast<std::uintmax_t>(std::numeric_limits<std::streamsize>::max())) {
+        throw std::overflow_error(
+            "Mesh file is too large to load: " + dentalviz::pathToUtf8(path));
     }
 
     std::vector<char> contents(static_cast<std::size_t>(byteCount));
     file.seekg(0, std::ios::beg);
     if (!file.read(contents.data(), static_cast<std::streamsize>(contents.size()))) {
-        throw std::runtime_error("Mesh file could not be read: " + pathToUtf8(path));
+        throw std::runtime_error(
+            "Mesh file could not be read: " + dentalviz::pathToUtf8(path));
     }
     return contents;
 }
@@ -196,7 +197,7 @@ MeshLoadResult MeshLoader::load(const std::filesystem::path& path)
     result.sourcePath = std::filesystem::absolute(path).lexically_normal();
     result.sourceMeshCount = static_cast<std::size_t>(scene->mNumMeshes);
     appendNode(*scene, *scene->mRootNode, glm::mat4(1.0F), result.mesh);
-    if (!result.mesh.hasValidIndices()) {
+    if (!result.mesh.isRenderable()) {
         throw std::runtime_error(
             "Loaded file did not contain a valid triangle mesh: " + pathToUtf8(path));
     }

@@ -6,6 +6,7 @@
 #include <glm/geometric.hpp>
 
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 TEST_CASE("procedural tooth is a valid indexed mesh", "[mesh]")
@@ -44,4 +45,33 @@ TEST_CASE("procedural tooth bounds retain model scale", "[mesh]")
 TEST_CASE("procedural tooth rejects insufficient radial detail", "[mesh]")
 {
     CHECK_THROWS_AS(dentalviz::makeProceduralTooth(7), std::invalid_argument);
+}
+
+TEST_CASE("renderable mesh rejects non-finite vertex data", "[mesh][invalid-input]")
+{
+    dentalviz::MeshData mesh;
+    mesh.vertices = {
+        {{0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}},
+        {{1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}},
+        {{0.0F, 1.0F, 0.0F}, {0.0F, 0.0F, 1.0F}},
+    };
+    mesh.indices = {0, 1, 2};
+    REQUIRE(mesh.isRenderable());
+
+    mesh.vertices[1].position.x = std::numeric_limits<float>::quiet_NaN();
+    CHECK_FALSE(mesh.hasFiniteVertexData());
+    CHECK_FALSE(mesh.isRenderable());
+    CHECK_THROWS_AS(mesh.bounds(), std::invalid_argument);
+
+    mesh.vertices[1].position.x = 1.0F;
+    mesh.vertices[2].normal.z = std::numeric_limits<float>::infinity();
+    CHECK_FALSE(mesh.hasFiniteVertexData());
+    CHECK_FALSE(mesh.isRenderable());
+}
+
+TEST_CASE("procedural tooth rejects index-space overflow before allocation", "[mesh][invalid-input]")
+{
+    CHECK_THROWS_AS(
+        dentalviz::makeProceduralTooth(std::numeric_limits<std::uint32_t>::max()),
+        std::overflow_error);
 }

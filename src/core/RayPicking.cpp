@@ -228,7 +228,7 @@ std::optional<RayHit> intersectTriangle(
 
 std::optional<RayHit> pickMesh(const Ray& ray, const MeshData& mesh)
 {
-    if (!mesh.hasValidIndices()) {
+    if (!mesh.isRenderable()) {
         throw std::invalid_argument("Cannot pick an invalid mesh.");
     }
 

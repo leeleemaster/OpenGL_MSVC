@@ -24,6 +24,7 @@ add_library(dentalviz_core STATIC
     src/core/ClippingPlane.cpp
     src/core/MeshData.cpp
     src/core/OrbitCamera.cpp
+    src/core/PathText.cpp
     src/core/PointMeasurement.cpp
     src/core/RayPicking.cpp
     src/minishader/Diagnostic.cpp
