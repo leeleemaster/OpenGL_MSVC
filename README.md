@@ -1,29 +1,31 @@
 # DentalViz
 
-C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
+**C++ Dental 3D Visualization with MiniShader Runtime**
 
 [![Windows Build](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml/badge.svg?branch=main)](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml)
-[50초 P0 Viewer Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
+[![MiniShader milestone](https://img.shields.io/badge/milestone-v0.8--minishader-0b7d87)](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-![DentalViz Viewer overview](docs/screenshots/01_overview.png)
+[▶ 50초 실제 실행 Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4) ·
+[Architecture](docs/architecture.md) ·
+[Performance](docs/performance/benchmark-summary.md) ·
+[v0.8 Source Tag](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
 
-현재 단계는 안정화된 P0 Viewer 위에 P1 MiniShader Runtime Compile & Apply까지 통합한
-`v0.8-minishader` 마일스톤입니다. 기본 화면은 프로젝트에서 직접 만든 비임상 절차 생성
-테스트 형상을 사용합니다.
+![DentalViz wireframe, normal visualization, picking, and measurement preview](docs/demo/DentalViz-readme-preview.gif)
 
-## 목표 기능
+## Overview
 
-- OpenGL 3.3 Core 기반 메시 렌더링
-- Orbit/Pan/Zoom 카메라와 모델 맞춤 보기
-- STL 메시 로딩과 모델 정보 표시
-- Ray–Triangle 기반 Picking
-- 두 표면점 사이의 3D 직선거리 측정
-- Fragment discard 기반 Clipping Preview
-- MiniShader Runtime Compile & Apply와 Last Known Good Shader 보존
+DentalViz는 C++20과 OpenGL 3.3 Core로 구현한 Windows x64 치과용 삼각형 메시
+뷰어입니다. STL/OBJ를 불러와 카메라 탐색, 표면 Picking, 두 점의 3D 직선거리 측정,
+Clipping Preview를 수행합니다. 제한된 Material DSL인 MiniShader는 입력을 단계별로
+검증하고, 성공한 OpenGL 프로그램만 현재 렌더러와 교체합니다.
 
-## 데모와 스크린샷
+P0 Viewer와 P1 MiniShader는 완료됐습니다. 기본 화면은 프로젝트에서 직접 만든 비임상
+절차 생성 테스트 형상을 사용하며, 의료기기 또는 진단 소프트웨어를 표방하지 않습니다.
 
-- [Overview](docs/screenshots/01_overview.png)
+## Demo
+
+- [전체 Viewer](docs/screenshots/01_overview.png)
 - [Wireframe](docs/screenshots/02_wireframe.png)
 - [Ray Picking](docs/screenshots/03_picking.png)
 - [3D Point-to-Point Measurement](docs/screenshots/04_measurement.png)
@@ -31,124 +33,126 @@ C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정�
 - [MiniShader Runtime Compile & Apply](docs/screenshots/06_minishader.png)
 - [MiniShader 오류와 Last Known Good](docs/screenshots/07_minishader_error.png)
 
-스크린샷과 Demo는 실제 Release 실행 창을 자동 조작해 생성합니다.
+모든 화면 자료는 실제 Release 실행 창을 캡처했습니다. 현재 50초 영상은 P0 Viewer를
+보여주며, MiniShader까지 포함한 60~90초 최종 영상은 Commit 23 산출물로 추가합니다.
 
-```powershell
-./scripts/capture-screenshots.ps1
-python ./scripts/capture-demo.py
+## Features
+
+| 영역 | 구현 결과 |
+|---|---|
+| Rendering | VAO/VBO/EBO indexed mesh, Blinn–Phong, Wireframe, Normal Color |
+| Camera | Orbit/Pan/Zoom, Bounds 기반 Fit, DPI 독립 Viewer 좌표 |
+| Model I/O | Assimp 기반 STL/OBJ, 노드 변환·법선·인덱스 공통 `MeshData` 변환 |
+| Picking | Viewer 좌표 → World Ray, AABB gate, Möller–Trumbore 최근접 삼각형 |
+| Measurement | 선택한 두 표면점 사이의 3D Euclidean 직선거리와 화면 라벨 |
+| Clipping | 모델 좌표 Plane의 positive half-space를 버리는 Fragment Preview |
+| MiniShader | Lexer → Parser/AST → Semantic → GLSL → 후보 OpenGL Compile/Link |
+| Safety | Move-only GL RAII, Last Known Good, NaN/과대/손상 입력 방어 |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    File["STL / OBJ"] --> IO["Assimp MeshLoader"]
+    IO --> CPU["CPU MeshData"]
+    CPU --> Geometry["Bounds / Picking / Measurement"]
+    CPU --> GPU["GpuMesh VAO / VBO / EBO"]
+    UI["Dear ImGui ViewerUi"] --> App["Application orchestration"]
+    Geometry --> App
+    GPU --> Renderer["OpenGL 3.3 Renderer"]
+    Source["MiniShader source"] --> Compiler["Headless compiler pipeline"]
+    Compiler --> Candidate["Candidate ShaderProgram"]
+    Candidate -->|"compile + link success"| Renderer
+    App --> Renderer
 ```
 
-Demo 자동 캡처에는 Python 3와 `opencv-python`, `numpy`, `Pillow`가 필요합니다.
+OpenGL이 필요 없는 geometry·camera·MiniShader compiler는 `dentalviz_core`에 두고,
+OpenGL handle은 실행 파일의 move-only renderer 타입이 소유합니다. 자세한 의존 방향,
+좌표 변환, P0/P1/P2 범위와 기술 선택 근거는 [Architecture](docs/architecture.md)에
+정리했습니다.
 
-## 로컬 빌드
+## Engineering Decisions
 
-Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치되어 있어야 합니다.
-일반 PowerShell에서 다음 스크립트를 실행하면 Visual Studio에 포함된 CMake와 vcpkg를 자동으로 찾습니다.
+| 결정 | 이유와 경계 |
+|---|---|
+| CPU Mesh와 GPU Mesh 분리 | 파일/기하 테스트는 GL context 없이 실행하고 GPU handle 수명은 RAII로 한정 |
+| 버튼 기반 Compile & Apply | 편집 중 렌더러 변경을 막고 명시적인 후보 검증 시점 제공 |
+| Last Known Good Shader | DSL 또는 드라이버 실패 시 직전 성공 프로그램과 화면을 그대로 유지 |
+| 직접 OpenGL 3.3 Pipeline | 핵심 렌더링·좌표·자원 수명 학습 근거를 코드로 노출 |
+| VTK 제외 | 포트폴리오 범위에서 핵심 구현을 가리지 않고 빌드·배포 표면을 제한 |
+| 전체 GLSL 재구현 제외 | Material 표현에 필요한 작은 DSL만 검증하고 최종 컴파일은 표준 GL driver에 위임 |
+
+## Build
+
+Visual Studio 2022의 **Desktop development with C++** 워크로드가 필요합니다. 일반
+PowerShell에서 Visual Studio 내장 CMake와 vcpkg를 자동 탐색합니다.
 
 ```powershell
 ./scripts/build.ps1 -Configuration Debug
 ./scripts/build.ps1 -Configuration Release
 ```
 
-빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
+Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소를 신뢰한 뒤 `F5`를
+누르면 Debug 빌드, 테스트, 실행이 이어집니다. `Ctrl+Shift+B`는 기본 Debug 빌드입니다.
 
-재배포 가능한 Shader와 제3자 라이선스 고지를 포함한 Windows x64 ZIP은 다음 명령으로
-생성합니다. 결과는 `out/DentalViz-v0.8-minishader-windows-x64.zip`입니다.
+```powershell
+./out/build/msvc/Debug/DentalViz.exe
+./out/build/msvc/Debug/DentalViz.exe --model "C:\Models\dental.stl"
+```
+
+Windows ZIP은 Shader와 제3자 고지를 포함해 `out/`에 생성됩니다. 공개 다운로드는 최종
+`v1.0-submission` Release에서 고정하며, 현재 패키지는 아래 명령으로 재현할 수 있습니다.
 
 ```powershell
 ./scripts/package.ps1 -Configuration Release
 ```
 
-Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orbit, 가운데 드래그는 Pan,
-왼쪽 짧은 클릭은 측정점 A/B 선택, 휠은 Zoom, `F`는 모델 맞춤입니다. 두 번째 점을
-선택하면 두 점 사이의 3D 직선거리와 연결선이 표시되고, 세 번째 유효 클릭은 새 A로
-다시 시작합니다. 숫자 `1`, `2`, `3`으로 각각 Solid, Wireframe,
-Normal Color 모드를 선택하며 `Escape` 또는 닫기 버튼으로 종료합니다. Properties 패널에서는
-모델 정보, FPS, 상태·오류를 확인하고 색상, 조명, 광택, 렌더 모드를 즉시 조정할 수 있습니다.
-`Clipping Preview` 탭에서는 클리핑을 켜고 +X/+Y/+Z 법선과 평면 거리 `d`를 조절할 수
-있습니다. 평면은 모델 좌표계에 고정되므로 카메라를 움직여도 모델에 대한 위치가 바뀌지
-않습니다. 이 기능은 Fragment Shader가 평면 바깥 조각을 버리는 미리보기이며, 잘린 단면을
-새 형상으로 생성하거나 채우지는 않습니다.
+## Tests
 
-`MiniShader` 탭에서는 제한된 Material Source를 편집하고 `Compile & Apply` 버튼으로만
-Lexer → Parser → Semantic Analyzer → GLSL Generator → OpenGL Compile/Link를 실행합니다.
-성공한 Shader만 현재 렌더러와 교체되며, 문법·타입·드라이버 오류가 발생하면 직전
-Last Known Good Shader가 유지되고 오류의 line/column이 표시됩니다. 생성된 GLSL은 같은
-탭의 Preview에서 확인할 수 있으며 자동 Hot Reload라고 표현하지 않습니다.
+Debug와 Release 빌드 뒤 63개 Catch2 테스트가 자동 실행되며 MSVC `/W4 /WX`를 사용합니다.
+Geometry, Loader, Camera, Picking, Measurement, Lexer, Parser, Semantic, GLSL Generator와
+손상·NaN·과대·과도한 중첩 입력을 포함합니다.
+
+실제 GPU 검증은 별도 명령으로 실행합니다.
 
 ```powershell
-./out/build/msvc/Debug/DentalViz.exe
+./scripts/verify-runtime-hardening.ps1
+./scripts/verify-minishader-runtime.ps1
 ```
 
-외부 STL 또는 OBJ를 시작 시 로드할 수 있습니다. 로더는 파일의 실제 길이 단위를
-추론하지 않으므로 측정값은 `model units`로 표시하며 임의로 mm라고 단정하지 않습니다.
+단계별 로컬 증거는 [`docs/verification/`](docs/verification/)에 기록했습니다.
 
-```powershell
-./out/build/msvc/Debug/DentalViz.exe --model "C:\Models\dental.stl"
-```
+## Performance
 
-파일이 없거나 손상된 경우 오류를 출력하고 절차 생성 테스트 치아로 복구합니다.
-실행 후에는 Properties 패널의 `Load Model...` 버튼으로 Windows 파일 선택 창을 열어 다른
-STL/OBJ로 교체할 수 있습니다. 한글이 포함된 Windows 경로도 지원합니다.
+2026-08-17, Release, 1280×720, VSync Off, NVIDIA GeForce RTX 5070 Ti/OpenGL 3.3에서
+워밍업 후 측정한 값입니다.
 
-### VS Code
+| Model | Triangles | Load median | Upload median | CPU frame median / p95 | Picking median / p95 |
+|---|---:|---:|---:|---:|---:|
+| 100k | 100,008 | 81.500 ms | 0.851 ms | 0.286 / 0.476 ms | 0.663 / 0.684 ms |
+| 500k | 500,004 | 477.794 ms | 3.337 ms | 0.516 / 1.012 ms | 3.321 / 3.413 ms |
 
-Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소 폴더를 신뢰한 뒤
-`F5`를 누르면 Debug 빌드, 테스트, 실행이 순서대로 진행됩니다. `Ctrl+Shift+B`는 기본
-Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택할 수 있습니다.
-
-## 성능 측정
-
-전용 Release 벤치마크는 1280×720, VSync Off, 동일한 Bounds-fit 카메라 조건에서 절차
-생성한 약 10만/50만 삼각형 OBJ의 로딩, GPU 업로드, 프레임 제출, Picking을 반복
-측정합니다. 다음 스크립트가 Release 빌드와 테스트를 먼저 통과시킨 뒤 실측을 수행합니다.
+Upload은 `glFinish`까지의 CPU 관측 벽시계 시간이며 GPU timer query가 아닙니다. CPU Frame
+역시 GPU 실행 시간이 아닙니다. 조건·반복 횟수·1,246개 원시 샘플은
+[요약](docs/performance/benchmark-summary.md)과
+[CSV](docs/performance/benchmark-raw.csv)에 있습니다.
 
 ```powershell
 ./scripts/run-benchmark.ps1
 ```
 
-2026-08-17 NVIDIA GeForce RTX 5070 Ti/OpenGL 3.3 실측 요약과 모든 개별 샘플은 각각
-[`docs/performance/benchmark-summary.md`](docs/performance/benchmark-summary.md)와
-[`docs/performance/benchmark-raw.csv`](docs/performance/benchmark-raw.csv)에 기록했습니다.
-표의 GPU Upload는 `glFinish`까지의 CPU 관측 벽시계 시간이고, CPU Frame은 명령 제출과
-VSync-off Swap을 포함한 CPU 시간입니다. 두 수치를 GPU 실행 시간으로 표현하지 않습니다.
+## Limitations
 
-## 현재 상태
+- STL/OBJ의 실제 길이 단위를 추론하지 않으므로 측정값은 `model units`입니다.
+- 측정은 두 점 사이의 3D 직선거리이며 표면을 따르는 geodesic distance가 아닙니다.
+- Clipping은 fragment discard 미리보기이며 단면 mesh 또는 cap을 생성하지 않습니다.
+- Picking은 AABB 이후 모든 삼각형을 검사하며 BVH는 P2 범위입니다.
+- MiniShader는 제한된 Material DSL이며 임의 GLSL 또는 자동 Hot Reload가 아닙니다.
+- 임상 검증, DICOM/volume rendering, 의료기기 안전 요구사항은 범위 밖입니다.
 
-- [x] 범위, 좌표계, 완료조건 고정
-- [x] CMake/MSVC/vcpkg 골격
-- [x] Catch2 Smoke Test
-- [x] Windows GitHub Actions 구성
-- [x] OpenGL Window와 Application Loop
-- [x] Indexed GPU Mesh와 Blinn–Phong 테스트 렌더링
-- [x] 절차 생성 치아의 법선·경계·인덱스 단위 테스트
-- [x] Orbit/Pan/Zoom과 Bounds 기반 `F` 모델 맞춤 카메라
-- [x] 외부 GLSL 로딩과 파일·단계별 컴파일 오류 표시
-- [x] Blinn–Phong Solid/Wireframe/Normal Color 렌더 모드
-- [x] Assimp 기반 STL/OBJ 로딩, 법선·인덱스·노드 변환 전처리
-- [x] Dear ImGui Properties UI, Windows 모델 선택, 상태·오류 표시
-- [x] DPI 독립 Viewer Ray, AABB 가속, Moller-Trumbore 최근접 표면 Picking
-- [x] 클릭/드래그 구분, 선택 좌표·법선·삼각형 정보와 화면 마커
-- [x] 두 표면점 A/B의 3D 직선거리, 연결선, 거리 라벨과 측정 초기화
-- [x] 모델 좌표 기반 +X/+Y/+Z Plane Clipping Preview와 실시간 거리 조절
-- [x] 실행 파일 기준 Asset 탐색, Windows x64 ZIP, 별도 폴더 Release Smoke Test
-- [x] 실제 Viewer 스크린샷 5장과 50초 P0 Demo
-- [x] MiniShader MVP EBNF, 타입 규칙, 내장 심볼과 오류 정책 고정
-- [x] MiniShader Token Stream, 주석 처리와 1-based Source Location Lexer
-- [x] MiniShader Recursive Descent Parser, 연산자 우선순위와 `unique_ptr` AST
-- [x] MiniShader 이름·함수·타입·연산자 Semantic Analyzer와 다중 오류 진단
-- [x] MiniShader AST 기반 결정적 GLSL 생성, Source Mapping과 Golden Test
-- [x] MiniShader Editor, Runtime Compile & Apply와 Last Known Good Shader
-- [x] 10만/50만 삼각형 Release 렌더링·Picking 성능 원시 결과와 요약표
-- [x] NaN/과대 입력 방어, OpenGL 자원 이동·해제와 잘못된 Shader/Model 복구 검증
-- [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
+## License and Asset Attribution
 
-자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
-[`docs/coordinate-system.md`](docs/coordinate-system.md),
-[`docs/architecture.md`](docs/architecture.md)를 참고하세요. P1 MiniShader의 구현 기준은
-[`docs/minishader-language.md`](docs/minishader-language.md)에 고정되어 있습니다. 실제 OpenGL
-로컬 실행 결과는 [`docs/verification/`](docs/verification/)에 단계별로 기록되어 있습니다.
-
-## 라이선스
-
-소스 코드는 MIT License로 배포합니다. 모델과 제3자 라이브러리는 각각의 라이선스를 따릅니다.
+소스 코드는 [MIT License](LICENSE)로 배포합니다. Windows ZIP은 사용한 vcpkg 패키지의
+저작권 고지를 `third-party-licenses/`에 포함합니다. 재배포 출처와 라이선스가 확인된
+Dental STL은 아직 번들하지 않으며, [모델 고지](assets/models/LICENSE.txt)에 따라
+프로젝트 작성 절차 생성 테스트 형상만 사용합니다.
