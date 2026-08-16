@@ -27,7 +27,8 @@ public:
     CameraController(CameraController&&) = delete;
     CameraController& operator=(CameraController&&) = delete;
 
-    void update(float aspectRatio);
+    void update(float aspectRatio, bool allowMouseInput = true, bool allowKeyboardInput = true);
+    void setModelBounds(const AxisAlignedBounds& modelBounds) noexcept;
     [[nodiscard]] const CameraInteractionStats& stats() const noexcept;
 
 private:

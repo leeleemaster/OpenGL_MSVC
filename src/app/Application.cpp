@@ -7,6 +7,7 @@
 #include "io/MeshLoader.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
+#include "ui/ViewerUi.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -14,6 +15,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <iomanip>
@@ -27,25 +29,6 @@ namespace {
 
 constexpr int initialWindowWidth = 1280;
 constexpr int initialWindowHeight = 720;
-
-enum class RenderMode : int {
-    solid = 0,
-    wireframe = 1,
-    normals = 2,
-};
-
-const char* renderModeName(RenderMode mode) noexcept
-{
-    switch (mode) {
-    case RenderMode::solid:
-        return "Solid";
-    case RenderMode::wireframe:
-        return "Wireframe";
-    case RenderMode::normals:
-        return "Normals";
-    }
-    return "Unknown";
-}
 
 std::filesystem::path findShaderDirectory()
 {
@@ -92,6 +75,59 @@ const char* glString(GLenum name)
     return value != nullptr ? reinterpret_cast<const char*>(value) : "Unavailable";
 }
 
+std::string pathToUtf8(const std::filesystem::path& path)
+{
+    const std::u8string value = path.u8string();
+    return std::string(reinterpret_cast<const char*>(value.data()), value.size());
+}
+
+dentalviz::ViewerModelInfo proceduralModelInfo(const dentalviz::MeshData& mesh)
+{
+    dentalviz::ViewerModelInfo information;
+    information.name = "Procedural Tooth (test geometry)";
+    information.vertexCount = mesh.vertices.size();
+    information.triangleCount = mesh.indices.size() / 3;
+    information.bounds = mesh.bounds();
+    return information;
+}
+
+dentalviz::ViewerModelInfo loadedModelInfo(
+    const dentalviz::MeshData& mesh,
+    const dentalviz::MeshLoadResult& result)
+{
+    dentalviz::ViewerModelInfo information;
+    information.name = pathToUtf8(result.sourcePath.filename());
+    information.sourcePath = result.sourcePath;
+    information.vertexCount = mesh.vertices.size();
+    information.triangleCount = mesh.indices.size() / 3;
+    information.sourceMeshCount = result.sourceMeshCount;
+    information.bounds = mesh.bounds();
+    information.loadMilliseconds =
+        static_cast<double>(result.loadDuration.count()) / 1000.0;
+    information.loadedFromFile = true;
+    return information;
+}
+
+void printModelInformation(const dentalviz::ViewerModelInfo& information)
+{
+    const glm::vec3 boundsSize = information.bounds.size();
+    std::cout << "Model: " << information.name << '\n'
+              << "Mesh: " << information.vertexCount << " vertices, "
+              << information.triangleCount << " triangles\n"
+              << "Bounds size: " << boundsSize.x << ", "
+              << boundsSize.y << ", " << boundsSize.z << '\n';
+    if (information.loadedFromFile) {
+        std::cout << "Source: " << pathToUtf8(information.sourcePath) << '\n'
+                  << "Source meshes: " << information.sourceMeshCount << '\n'
+                  << "Load time: " << std::fixed << std::setprecision(3)
+                  << information.loadMilliseconds << " ms\n";
+    }
+    std::cout << "Assumed unit: 1 model unit = 1 mm"
+              << (information.loadedFromFile
+                      ? " (source unit is not treated as reliable metadata)\n"
+                      : "\n");
+}
+
 } // namespace
 
 namespace dentalviz {
@@ -122,6 +158,7 @@ Application::Application()
         glfwInitialized_ = false;
         throw std::runtime_error("Failed to create an OpenGL 3.3 Core window.");
     }
+    glfwSetWindowSizeLimits(window_, 800, 520, GLFW_DONT_CARE, GLFW_DONT_CARE);
 
     glfwMakeContextCurrent(window_);
     if (gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)) == 0) {
@@ -168,61 +205,51 @@ Application::~Application()
 
 int Application::run(const ApplicationRunOptions& options)
 {
-    MeshData modelData;
-    std::string modelName = "Procedural Tooth (test geometry)";
-    std::optional<MeshLoadResult> loadedModel;
+    MeshData modelData = makeProceduralTooth();
+    ViewerUiState uiState;
+    uiState.model = proceduralModelInfo(modelData);
     if (options.modelPath.has_value()) {
         try {
-            loadedModel = MeshLoader::load(options.modelPath.value());
-            modelName = loadedModel->sourcePath.filename().string();
-            modelData = std::move(loadedModel->mesh);
+            MeshLoadResult loadedModel = MeshLoader::load(options.modelPath.value());
+            MeshData loadedData = std::move(loadedModel.mesh);
+            uiState.model = loadedModelInfo(loadedData, loadedModel);
+            modelData = std::move(loadedData);
+            uiState.statusMessage = "Startup model loaded successfully.";
         } catch (const std::exception& error) {
             std::cerr << "Model load failed: " << error.what() << '\n'
                       << "Falling back to procedural test geometry.\n";
+            uiState.statusMessage = std::string("Startup model load failed: ") + error.what();
+            uiState.statusIsError = true;
         }
     }
-    if (modelData.vertices.empty()) {
-        modelData = makeProceduralTooth();
-    }
 
-    const AxisAlignedBounds modelBounds = modelData.bounds();
-    const GpuMesh gpuMesh(modelData);
+    AxisAlignedBounds modelBounds = modelData.bounds();
+    GpuMesh gpuMesh(modelData);
     const std::filesystem::path shaderDirectory = findShaderDirectory();
     const ShaderProgram toothShader = ShaderProgram::fromFiles(
         shaderDirectory / "mesh.vert",
         shaderDirectory / "mesh.frag");
 
-    std::cout << "Model: " << modelName << '\n'
-              << "Mesh: " << modelData.vertices.size() << " vertices, "
-              << modelData.indices.size() / 3 << " triangles\n"
-              << "Bounds size: " << modelBounds.size().x << ", "
-              << modelBounds.size().y << ", " << modelBounds.size().z << '\n';
-    if (loadedModel.has_value()) {
-        const double loadMilliseconds =
-            static_cast<double>(loadedModel->loadDuration.count()) / 1000.0;
-        std::cout << "Source: " << loadedModel->sourcePath.string() << '\n'
-                  << "Source meshes: " << loadedModel->sourceMeshCount << '\n'
-                  << "Load time: " << std::fixed << std::setprecision(3)
-                  << loadMilliseconds << " ms\n"
-                  << "Assumed unit: 1 model unit = 1 mm (STL has no unit metadata)\n";
-    }
+    printModelInformation(uiState.model);
     std::cout << "Shaders: " << shaderDirectory.string() << '\n';
 
-    int initialFramebufferWidth = 0;
-    int initialFramebufferHeight = 0;
-    glfwGetFramebufferSize(window_, &initialFramebufferWidth, &initialFramebufferHeight);
-    const float initialAspectRatio = initialFramebufferHeight > 0
-        ? static_cast<float>(initialFramebufferWidth) /
-              static_cast<float>(initialFramebufferHeight)
+    int startupWindowWidth = 0;
+    int startupWindowHeight = 0;
+    glfwGetWindowSize(window_, &startupWindowWidth, &startupWindowHeight);
+    constexpr int initialPropertiesWidth =
+        static_cast<int>(ViewerUi::propertiesPanelWidth);
+    const int initialViewerWidth = std::max(startupWindowWidth - initialPropertiesWidth, 1);
+    const float initialAspectRatio = startupWindowHeight > 0
+        ? static_cast<float>(initialViewerWidth) / static_cast<float>(startupWindowHeight)
         : 16.0F / 9.0F;
 
     OrbitCamera camera;
     camera.fit(modelBounds, initialAspectRatio);
     CameraController cameraController(window_, camera, modelBounds);
+    ViewerUi viewerUi(window_);
     std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
               << "Render modes: 1 Solid | 2 Wireframe | 3 Normals | Esc close\n";
 
-    RenderMode renderMode = RenderMode::solid;
     bool solidWasPressed = false;
     bool wireframeWasPressed = false;
     bool normalsWasPressed = false;
@@ -244,58 +271,119 @@ int Application::run(const ApplicationRunOptions& options)
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         }
 
-        RenderMode requestedMode = renderMode;
-        if (keyPressedOnce(window_, GLFW_KEY_1, solidWasPressed)) {
-            requestedMode = RenderMode::solid;
-        }
-        if (keyPressedOnce(window_, GLFW_KEY_2, wireframeWasPressed)) {
-            requestedMode = RenderMode::wireframe;
-        }
-        if (keyPressedOnce(window_, GLFW_KEY_3, normalsWasPressed)) {
-            requestedMode = RenderMode::normals;
-        }
-        if (requestedMode != renderMode) {
-            renderMode = requestedMode;
-            ++renderModeChanges;
-            std::cout << "Render mode: " << renderModeName(renderMode) << '\n';
-        }
-
+        int windowWidth = 0;
+        int windowHeight = 0;
         int framebufferWidth = 0;
         int framebufferHeight = 0;
+        glfwGetWindowSize(window_, &windowWidth, &windowHeight);
         glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
-        if (framebufferWidth == 0 || framebufferHeight == 0) {
+        if (windowWidth <= 0 || windowHeight <= 0 ||
+            framebufferWidth <= 0 || framebufferHeight <= 0) {
             glfwPollEvents();
             continue;
         }
 
-        const float aspectRatio = static_cast<float>(framebufferWidth) /
-                                  static_cast<float>(framebufferHeight);
-        cameraController.update(aspectRatio);
+        viewerUi.beginFrame(windowWidth, windowHeight, framebufferWidth, framebufferHeight);
+        const RenderMode modeAtFrameStart = uiState.renderMode;
+        const ViewerUiActions uiActions = viewerUi.draw(uiState);
+
+        if (uiActions.modelToLoad.has_value()) {
+            try {
+                MeshLoadResult loadedModel = MeshLoader::load(uiActions.modelToLoad.value());
+                MeshData replacementData = std::move(loadedModel.mesh);
+                ViewerModelInfo replacementInformation =
+                    loadedModelInfo(replacementData, loadedModel);
+                GpuMesh replacementGpuMesh(replacementData);
+
+                modelData = std::move(replacementData);
+                gpuMesh = std::move(replacementGpuMesh);
+                modelBounds = replacementInformation.bounds;
+                uiState.model = std::move(replacementInformation);
+                cameraController.setModelBounds(modelBounds);
+                camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+                uiState.statusMessage = "Model loaded successfully.";
+                uiState.statusIsError = false;
+                printModelInformation(uiState.model);
+            } catch (const std::exception& error) {
+                uiState.statusMessage = std::string("Model load failed: ") + error.what();
+                uiState.statusIsError = true;
+                std::cerr << uiState.statusMessage << '\n';
+            }
+        }
+
+        if (uiActions.resetCamera) {
+            camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+        }
+
+        const bool solidPressed = keyPressedOnce(window_, GLFW_KEY_1, solidWasPressed);
+        const bool wireframePressed = keyPressedOnce(window_, GLFW_KEY_2, wireframeWasPressed);
+        const bool normalsPressed = keyPressedOnce(window_, GLFW_KEY_3, normalsWasPressed);
+        if (!viewerUi.wantsCaptureKeyboard()) {
+            if (solidPressed) {
+                uiState.renderMode = RenderMode::solid;
+            }
+            if (wireframePressed) {
+                uiState.renderMode = RenderMode::wireframe;
+            }
+            if (normalsPressed) {
+                uiState.renderMode = RenderMode::normals;
+            }
+        }
+        if (uiState.renderMode != modeAtFrameStart) {
+            ++renderModeChanges;
+            std::cout << "Render mode: " << renderModeName(uiState.renderMode) << '\n';
+        }
+
+        const float aspectRatio = viewerUi.viewerRect().aspectRatio();
+        cameraController.update(
+            aspectRatio,
+            viewerUi.isMouseOverViewer() && !viewerUi.wantsCaptureMouse(),
+            !viewerUi.wantsCaptureKeyboard());
         const glm::mat4 projection = camera.projectionMatrix(aspectRatio);
         const glm::mat4 view = camera.viewMatrix();
         const glm::mat4 model(1.0F);
         const glm::vec3 cameraPosition = camera.position();
 
-        glClearColor(0.035F, 0.075F, 0.095F, 1.0F);
+        glDisable(GL_SCISSOR_TEST);
+        glViewport(0, 0, framebufferWidth, framebufferHeight);
+        glClearColor(0.055F, 0.075F, 0.090F, 1.0F);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        const ViewerRect& viewerRect = viewerUi.viewerRect();
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(
+            viewerRect.framebufferX,
+            viewerRect.framebufferY,
+            viewerRect.framebufferWidth,
+            viewerRect.framebufferHeight);
+        glViewport(
+            viewerRect.framebufferX,
+            viewerRect.framebufferY,
+            viewerRect.framebufferWidth,
+            viewerRect.framebufferHeight);
+        glClearColor(0.025F, 0.055F, 0.070F, 1.0F);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         toothShader.use();
         toothShader.setMatrix4("uModel", model);
         toothShader.setMatrix4("uView", view);
         toothShader.setMatrix4("uProjection", projection);
-        toothShader.setVector3("uBaseColor", glm::vec3(0.86F, 0.76F, 0.56F));
-        toothShader.setVector3("uLightPosition", glm::vec3(3.2F, 4.0F, 4.5F));
+        toothShader.setVector3("uBaseColor", uiState.baseColor);
+        toothShader.setVector3("uLightPosition", uiState.lightPosition);
         toothShader.setVector3("uCameraPosition", cameraPosition);
-        toothShader.setFloat("uShininess", 72.0F);
-        toothShader.setInteger("uRenderMode", static_cast<int>(renderMode));
+        toothShader.setFloat("uShininess", uiState.shininess);
+        toothShader.setInteger("uRenderMode", static_cast<int>(uiState.renderMode));
 
-        if (renderMode == RenderMode::wireframe) {
+        if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
         gpuMesh.draw();
-        if (renderMode == RenderMode::wireframe) {
+        if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
+
+        glDisable(GL_SCISSOR_TEST);
+        viewerUi.render();
 
         glfwSwapBuffers(window_);
         glfwPollEvents();
@@ -304,8 +392,9 @@ int Application::run(const ApplicationRunOptions& options)
         const double titleInterval = now - titleIntervalStart;
         if (titleInterval >= 0.5) {
             const double framesPerSecond = static_cast<double>(renderedFrames) / titleInterval;
+            uiState.framesPerSecond = static_cast<float>(framesPerSecond);
             std::ostringstream title;
-            title << projectName() << " | " << renderModeName(renderMode)
+            title << projectName() << " | " << renderModeName(uiState.renderMode)
                   << " | OpenGL 3.3 Core | " << std::fixed
                   << std::setprecision(1) << framesPerSecond << " FPS";
             glfwSetWindowTitle(window_, title.str().c_str());

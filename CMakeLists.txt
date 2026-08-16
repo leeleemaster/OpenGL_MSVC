@@ -16,6 +16,7 @@ find_package(assimp CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
@@ -54,8 +55,10 @@ dentalviz_set_warnings(dentalviz_io)
 add_executable(DentalViz
     src/app/Application.cpp
     src/app/CameraController.cpp
+    src/platform/NativeFileDialog.cpp
     src/renderer/GpuMesh.cpp
     src/renderer/ShaderProgram.cpp
+    src/ui/ViewerUi.cpp
     src/main.cpp
 )
 target_link_libraries(DentalViz
@@ -64,6 +67,8 @@ target_link_libraries(DentalViz
         dentalviz_io
         glad::glad
         glfw
+        imgui::imgui
+        Comdlg32
 )
 target_compile_features(DentalViz PRIVATE cxx_std_20)
 target_compile_definitions(DentalViz PRIVATE GLFW_INCLUDE_NONE)
@@ -84,6 +89,7 @@ if(BUILD_TESTING)
         tests/MeshLoaderTests.cpp
         tests/OrbitCameraTests.cpp
         tests/SmokeTests.cpp
+        tests/ViewerRectTests.cpp
     )
     target_link_libraries(dentalviz_tests
         PRIVATE

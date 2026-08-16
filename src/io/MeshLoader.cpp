@@ -12,11 +12,43 @@
 
 #include <cmath>
 #include <cstdint>
+#include <fstream>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
+
+std::string pathToUtf8(const std::filesystem::path& path)
+{
+    const std::u8string value = path.u8string();
+    return std::string(reinterpret_cast<const char*>(value.data()), value.size());
+}
+
+std::vector<char> readMeshFile(const std::filesystem::path& path)
+{
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file) {
+        throw std::runtime_error("Mesh file could not be opened: " + pathToUtf8(path));
+    }
+
+    const std::streampos endPosition = file.tellg();
+    if (endPosition <= 0) {
+        throw std::runtime_error("Mesh file is empty or unreadable: " + pathToUtf8(path));
+    }
+    const auto byteCount = static_cast<std::uintmax_t>(endPosition);
+    if (byteCount > std::numeric_limits<std::size_t>::max()) {
+        throw std::overflow_error("Mesh file is too large to load: " + pathToUtf8(path));
+    }
+
+    std::vector<char> contents(static_cast<std::size_t>(byteCount));
+    file.seekg(0, std::ios::beg);
+    if (!file.read(contents.data(), static_cast<std::streamsize>(contents.size()))) {
+        throw std::runtime_error("Mesh file could not be read: " + pathToUtf8(path));
+    }
+    return contents;
+}
 
 glm::mat4 toGlmMatrix(const aiMatrix4x4& matrix) noexcept
 {
@@ -130,10 +162,11 @@ MeshLoadResult MeshLoader::load(const std::filesystem::path& path)
         throw std::invalid_argument("Mesh path must not be empty.");
     }
     if (!std::filesystem::is_regular_file(path)) {
-        throw std::runtime_error("Mesh file does not exist: " + path.string());
+        throw std::runtime_error("Mesh file does not exist: " + pathToUtf8(path));
     }
 
     const auto startTime = std::chrono::steady_clock::now();
+    const std::vector<char> fileContents = readMeshFile(path);
     Assimp::Importer importer;
     constexpr unsigned int importFlags =
         aiProcess_Triangulate |
@@ -143,11 +176,19 @@ MeshLoadResult MeshLoader::load(const std::filesystem::path& path)
         aiProcess_SortByPType |
         aiProcess_ValidateDataStructure;
 
-    const aiScene* scene = importer.ReadFile(path.string(), importFlags);
+    std::string formatHint = pathToUtf8(path.extension());
+    if (!formatHint.empty() && formatHint.front() == '.') {
+        formatHint.erase(formatHint.begin());
+    }
+    const aiScene* scene = importer.ReadFileFromMemory(
+        fileContents.data(),
+        fileContents.size(),
+        importFlags,
+        formatHint.empty() ? nullptr : formatHint.c_str());
     if (scene == nullptr || scene->mRootNode == nullptr || scene->mNumMeshes == 0) {
         const std::string details = importer.GetErrorString();
         throw std::runtime_error(
-            "Assimp could not load mesh file '" + path.string() + "': " +
+            "Assimp could not load mesh file '" + pathToUtf8(path) + "': " +
             (details.empty() ? "unknown import error" : details));
     }
 
@@ -156,7 +197,8 @@ MeshLoadResult MeshLoader::load(const std::filesystem::path& path)
     result.sourceMeshCount = static_cast<std::size_t>(scene->mNumMeshes);
     appendNode(*scene, *scene->mRootNode, glm::mat4(1.0F), result.mesh);
     if (!result.mesh.hasValidIndices()) {
-        throw std::runtime_error("Loaded file did not contain a valid triangle mesh: " + path.string());
+        throw std::runtime_error(
+            "Loaded file did not contain a valid triangle mesh: " + pathToUtf8(path));
     }
 
     result.loadDuration = std::chrono::duration_cast<std::chrono::microseconds>(

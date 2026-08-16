@@ -6,6 +6,7 @@
 DentalViz executable
   -> app / ui / renderer / scene / io
   -> dentalviz_core (geometry and shared domain types)
+  -> Dear ImGui GLFW/OpenGL3 backends
 
 dentalviz_io
   -> dentalviz_core / Assimp
@@ -22,11 +23,20 @@ testable code. OpenGL handles remain inside renderer-side RAII types.
 indices into the same `MeshData` used by procedural geometry. File parsing remains independent
 of the OpenGL context and is tested with project-authored non-clinical fixtures.
 
+`ViewerUi` owns the Dear ImGui context and backend lifetime, emits UI actions, and stores the
+window-space plus framebuffer-space viewer rectangle. The application remains responsible for
+model loading, GPU replacement, camera fitting, and rendering state. The Windows native file
+dialog is isolated under `src/platform`.
+
 ## Viewport decision
 
 P0 uses a fixed properties sidebar and renders the scene directly into the remaining
 framebuffer rectangle with `glViewport` and `glScissor`. This avoids an early framebuffer
 object dependency. Picking uses the same recorded rectangle and DPI conversion.
+
+Camera input is accepted only while the GLFW cursor is inside that viewer rectangle and Dear
+ImGui does not request capture. This prevents panel drags and wheel events from changing the
+camera while preserving the exact coordinate rectangle needed by the later picking stage.
 
 An FBO-backed ImGui image viewport is a later refactor only if docking or multiple viewports
 becomes necessary.

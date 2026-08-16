@@ -34,7 +34,10 @@ CameraController::~CameraController()
     }
 }
 
-void CameraController::update(float aspectRatio)
+void CameraController::update(
+    float aspectRatio,
+    bool allowMouseInput,
+    bool allowKeyboardInput)
 {
     double cursorX = 0.0;
     double cursorY = 0.0;
@@ -48,10 +51,10 @@ void CameraController::update(float aspectRatio)
         const float verticalDelta = static_cast<float>(cursorY - lastCursorY_);
         const bool cursorMoved = horizontalDelta != 0.0F || verticalDelta != 0.0F;
 
-        if (leftPressed && leftWasPressed_ && cursorMoved) {
+        if (allowMouseInput && leftPressed && leftWasPressed_ && cursorMoved) {
             camera_.orbit(horizontalDelta, verticalDelta);
             ++stats_.orbitUpdates;
-        } else if (middlePressed && middleWasPressed_ && cursorMoved) {
+        } else if (allowMouseInput && middlePressed && middleWasPressed_ && cursorMoved) {
             int windowWidth = 0;
             int windowHeight = 0;
             glfwGetWindowSize(window_, &windowWidth, &windowHeight);
@@ -64,14 +67,14 @@ void CameraController::update(float aspectRatio)
         }
     }
 
-    if (pendingScrollOffset_ != 0.0) {
+    if (allowMouseInput && pendingScrollOffset_ != 0.0) {
         camera_.zoom(static_cast<float>(pendingScrollOffset_));
-        pendingScrollOffset_ = 0.0;
         ++stats_.zoomEvents;
     }
+    pendingScrollOffset_ = 0.0;
 
     const bool fitPressed = glfwGetKey(window_, GLFW_KEY_F) == GLFW_PRESS;
-    if (fitPressed && !fitWasPressed_) {
+    if (allowKeyboardInput && fitPressed && !fitWasPressed_) {
         camera_.fit(modelBounds_, aspectRatio);
         ++stats_.fitRequests;
     }
@@ -79,9 +82,14 @@ void CameraController::update(float aspectRatio)
     lastCursorX_ = cursorX;
     lastCursorY_ = cursorY;
     cursorInitialized_ = true;
-    leftWasPressed_ = leftPressed;
-    middleWasPressed_ = middlePressed;
-    fitWasPressed_ = fitPressed;
+    leftWasPressed_ = allowMouseInput && leftPressed;
+    middleWasPressed_ = allowMouseInput && middlePressed;
+    fitWasPressed_ = allowKeyboardInput && fitPressed;
+}
+
+void CameraController::setModelBounds(const AxisAlignedBounds& modelBounds) noexcept
+{
+    modelBounds_ = modelBounds;
 }
 
 const CameraInteractionStats& CameraController::stats() const noexcept
