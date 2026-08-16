@@ -88,6 +88,27 @@ target_compile_features(DentalViz PRIVATE cxx_std_20)
 target_compile_definitions(DentalViz PRIVATE GLFW_INCLUDE_NONE)
 dentalviz_set_warnings(DentalViz)
 
+add_executable(dentalviz_benchmark
+    src/benchmark/main.cpp
+    src/renderer/GpuMesh.cpp
+    src/renderer/ShaderProgram.cpp
+)
+target_link_libraries(dentalviz_benchmark
+    PRIVATE
+        dentalviz_core
+        dentalviz_io
+        glad::glad
+        glfw
+)
+target_compile_features(dentalviz_benchmark PRIVATE cxx_std_20)
+target_compile_definitions(dentalviz_benchmark
+    PRIVATE
+        GLFW_INCLUDE_NONE
+        DENTALVIZ_SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders"
+        DENTALVIZ_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+)
+dentalviz_set_warnings(dentalviz_benchmark)
+
 add_custom_command(TARGET DentalViz POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/assets/shaders

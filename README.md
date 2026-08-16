@@ -97,6 +97,22 @@ Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소 
 `F5`를 누르면 Debug 빌드, 테스트, 실행이 순서대로 진행됩니다. `Ctrl+Shift+B`는 기본
 Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택할 수 있습니다.
 
+## 성능 측정
+
+전용 Release 벤치마크는 1280×720, VSync Off, 동일한 Bounds-fit 카메라 조건에서 절차
+생성한 약 10만/50만 삼각형 OBJ의 로딩, GPU 업로드, 프레임 제출, Picking을 반복
+측정합니다. 다음 스크립트가 Release 빌드와 테스트를 먼저 통과시킨 뒤 실측을 수행합니다.
+
+```powershell
+./scripts/run-benchmark.ps1
+```
+
+2026-08-17 NVIDIA GeForce RTX 5070 Ti/OpenGL 3.3 실측 요약과 모든 개별 샘플은 각각
+[`docs/performance/benchmark-summary.md`](docs/performance/benchmark-summary.md)와
+[`docs/performance/benchmark-raw.csv`](docs/performance/benchmark-raw.csv)에 기록했습니다.
+표의 GPU Upload는 `glFinish`까지의 CPU 관측 벽시계 시간이고, CPU Frame은 명령 제출과
+VSync-off Swap을 포함한 CPU 시간입니다. 두 수치를 GPU 실행 시간으로 표현하지 않습니다.
+
 ## 현재 상태
 
 - [x] 범위, 좌표계, 완료조건 고정
@@ -123,6 +139,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] MiniShader 이름·함수·타입·연산자 Semantic Analyzer와 다중 오류 진단
 - [x] MiniShader AST 기반 결정적 GLSL 생성, Source Mapping과 Golden Test
 - [x] MiniShader Editor, Runtime Compile & Apply와 Last Known Good Shader
+- [x] 10만/50만 삼각형 Release 렌더링·Picking 성능 원시 결과와 요약표
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
