@@ -19,6 +19,7 @@ find_package(glm CONFIG REQUIRED)
 add_library(dentalviz_core STATIC
     src/core/BuildInfo.cpp
     src/core/MeshData.cpp
+    src/core/OrbitCamera.cpp
 )
 
 target_include_directories(dentalviz_core
@@ -36,6 +37,7 @@ dentalviz_set_warnings(dentalviz_core)
 
 add_executable(DentalViz
     src/app/Application.cpp
+    src/app/CameraController.cpp
     src/renderer/GpuMesh.cpp
     src/renderer/ShaderProgram.cpp
     src/main.cpp
@@ -55,6 +57,7 @@ if(BUILD_TESTING)
 
     add_executable(dentalviz_tests
         tests/MeshDataTests.cpp
+        tests/OrbitCameraTests.cpp
         tests/SmokeTests.cpp
     )
     target_link_libraries(dentalviz_tests

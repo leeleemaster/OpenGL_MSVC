@@ -1,14 +1,17 @@
 #include "app/Application.h"
+#include "app/CameraController.h"
 
 #include "core/BuildInfo.h"
 #include "core/MeshData.h"
+#include "core/OrbitCamera.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 
 #include <iomanip>
 #include <iostream>
@@ -174,11 +177,18 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
               << "Bounds size: " << toothBounds.size().x << ", "
               << toothBounds.size().y << ", " << toothBounds.size().z << '\n';
 
-    const glm::vec3 cameraPosition(0.0F, 0.15F, 4.6F);
-    const glm::mat4 view = glm::lookAt(
-        cameraPosition,
-        toothBounds.center(),
-        glm::vec3(0.0F, 1.0F, 0.0F));
+    int initialFramebufferWidth = 0;
+    int initialFramebufferHeight = 0;
+    glfwGetFramebufferSize(window_, &initialFramebufferWidth, &initialFramebufferHeight);
+    const float initialAspectRatio = initialFramebufferHeight > 0
+        ? static_cast<float>(initialFramebufferWidth) /
+              static_cast<float>(initialFramebufferHeight)
+        : 16.0F / 9.0F;
+
+    OrbitCamera camera;
+    camera.fit(toothBounds, initialAspectRatio);
+    CameraController cameraController(window_, camera, toothBounds);
+    std::cout << "Controls: Left drag orbit | Middle drag pan | Wheel zoom | F fit | Esc close\n";
 
     const double startTime = glfwGetTime();
     double titleIntervalStart = startTime;
@@ -206,17 +216,11 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
 
         const float aspectRatio = static_cast<float>(framebufferWidth) /
                                   static_cast<float>(framebufferHeight);
-        const glm::mat4 projection = glm::perspective(
-            glm::radians(42.0F),
-            aspectRatio,
-            0.1F,
-            100.0F);
-        glm::mat4 model(1.0F);
-        model = glm::rotate(model, glm::radians(-8.0F), glm::vec3(1.0F, 0.0F, 0.0F));
-        model = glm::rotate(
-            model,
-            static_cast<float>(now - startTime) * 0.38F,
-            glm::vec3(0.0F, 1.0F, 0.0F));
+        cameraController.update(aspectRatio);
+        const glm::mat4 projection = camera.projectionMatrix(aspectRatio);
+        const glm::mat4 view = camera.viewMatrix();
+        const glm::mat4 model(1.0F);
+        const glm::vec3 cameraPosition = camera.position();
 
         glClearColor(0.035F, 0.075F, 0.095F, 1.0F);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -252,6 +256,10 @@ int Application::run(std::optional<double> maximumRuntimeSeconds)
             "OpenGL reported an error during rendering: " + std::to_string(renderingError));
     }
 
+    const CameraInteractionStats& interactions = cameraController.stats();
+    std::cout << "Camera input: " << interactions.orbitUpdates << " orbit, "
+              << interactions.panUpdates << " pan, " << interactions.zoomEvents
+              << " zoom, " << interactions.fitRequests << " fit updates\n";
     std::cout << "Application loop exited cleanly.\n";
     return 0;
 }

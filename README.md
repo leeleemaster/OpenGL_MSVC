@@ -26,7 +26,8 @@ Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치
 
 빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
 
-Debug 실행 파일은 다음과 같이 실행합니다. 창은 `Escape` 키 또는 닫기 버튼으로 종료할 수 있습니다.
+Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orbit, 가운데 드래그는 Pan,
+휠은 Zoom, `F`는 모델 맞춤이며 `Escape` 또는 닫기 버튼으로 종료합니다.
 
 ```powershell
 ./out/build/msvc/Debug/DentalViz.exe
@@ -47,7 +48,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] OpenGL Window와 Application Loop
 - [x] Indexed GPU Mesh와 Blinn–Phong 테스트 렌더링
 - [x] 절차 생성 치아의 법선·경계·인덱스 단위 테스트
-- [ ] Orbit/Pan/Zoom 카메라
+- [x] Orbit/Pan/Zoom과 Bounds 기반 `F` 모델 맞춤 카메라
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
 [`docs/coordinate-system.md`](docs/coordinate-system.md),
