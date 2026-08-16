@@ -59,6 +59,7 @@ dentalviz_set_warnings(dentalviz_io)
 add_executable(DentalViz
     src/app/Application.cpp
     src/app/CameraController.cpp
+    src/platform/ExecutablePath.cpp
     src/platform/NativeFileDialog.cpp
     src/renderer/GpuMesh.cpp
     src/renderer/ShaderProgram.cpp

@@ -7,6 +7,7 @@
 #include "core/PointMeasurement.h"
 #include "core/RayPicking.h"
 #include "io/MeshLoader.h"
+#include "platform/ExecutablePath.h"
 #include "renderer/GpuMesh.h"
 #include "renderer/ShaderProgram.h"
 #include "renderer/SelectionMarker.h"
@@ -38,6 +39,7 @@ std::filesystem::path findShaderDirectory()
     const std::filesystem::path sourceDirectory =
         std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
     const std::array candidates{
+        dentalviz::executableDirectory() / "assets" / "shaders",
         std::filesystem::current_path() / "assets" / "shaders",
         sourceDirectory / "assets" / "shaders",
     };

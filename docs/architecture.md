@@ -48,12 +48,19 @@ becomes necessary.
 - GPU mesh data owns VAO/VBO/EBO handles through move-only RAII objects.
 - Upload and draw are separate operations.
 - Runtime shaders are loaded from `assets/shaders` and copied beside each built executable.
+- Runtime asset lookup checks the executable directory first, then the working directory and
+  source-tree fallback. A packaged executable therefore runs correctly from an unrelated current
+  working directory.
 - A shader replacement becomes active only after compile and link succeed.
 - UI communicates commands and state; it does not own renderer resources.
 - Clipping state stores a model-space axis normal and plane distance. The mesh vertex shader
   forwards the original model position and the fragment shader discards only the positive
   half-space, so camera changes cannot move the plane relative to the model. No cap geometry
   is generated.
+
+The application owns the GLFW context for its full lifetime. Function-local `ViewerUi`, marker,
+shader, and mesh RAII objects are destroyed before `Application` destroys the window and terminates
+GLFW, so every OpenGL deletion runs while the context is still current.
 
 ## Release linkage
 

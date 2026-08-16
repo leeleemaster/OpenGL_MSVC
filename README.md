@@ -2,7 +2,13 @@
 
 C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정하는 Windows 데스크톱 뷰어입니다.
 
-현재 단계는 STL/OBJ 메시를 탐색·측정하고 모델 좌표 평면으로 내부를 미리 보는 단계입니다.
+[![Windows Build](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml/badge.svg?branch=main)](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml)
+[50초 Viewer Demo](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
+
+![DentalViz Viewer overview](docs/screenshots/01_overview.png)
+
+현재 단계는 STL/OBJ 메시 탐색·측정·Clipping Preview를 제공하는 P0 Viewer Release입니다.
+기본 화면은 프로젝트에서 직접 만든 비임상 절차 생성 테스트 형상을 사용합니다.
 
 ## 목표 기능
 
@@ -13,6 +19,23 @@ C++20과 OpenGL을 이용해 치과용 삼각형 메시를 탐색하고 측정�
 - 두 표면점 사이의 3D 직선거리 측정
 - Fragment discard 기반 Clipping Preview
 - 선택 기능: MiniShader Runtime Compile & Apply
+
+## 데모와 스크린샷
+
+- [Overview](docs/screenshots/01_overview.png)
+- [Wireframe](docs/screenshots/02_wireframe.png)
+- [Ray Picking](docs/screenshots/03_picking.png)
+- [3D Point-to-Point Measurement](docs/screenshots/04_measurement.png)
+- [Clipping Preview](docs/screenshots/05_clipping.png)
+
+스크린샷과 Demo는 실제 Release 실행 창을 자동 조작해 생성합니다.
+
+```powershell
+./scripts/capture-screenshots.ps1
+python ./scripts/capture-demo.py
+```
+
+Demo 자동 캡처에는 Python 3와 `opencv-python`, `numpy`, `Pillow`가 필요합니다.
 
 ## 로컬 빌드
 
@@ -25,6 +48,13 @@ Visual Studio 2022에서 **Desktop development with C++** 워크로드가 설치
 ```
 
 빌드 결과는 `out/build/msvc/`에 생성됩니다. 테스트는 빌드 후 자동으로 실행됩니다.
+
+재배포 가능한 Shader와 제3자 라이선스 고지를 포함한 Windows x64 ZIP은 다음 명령으로
+생성합니다. 결과는 `out/DentalViz-v0.5-viewer-windows-x64.zip`입니다.
+
+```powershell
+./scripts/package.ps1 -Configuration Release
+```
 
 Debug 실행 파일은 다음과 같이 실행합니다. 왼쪽 드래그는 Orbit, 가운데 드래그는 Pan,
 왼쪽 짧은 클릭은 측정점 A/B 선택, 휠은 Zoom, `F`는 모델 맞춤입니다. 두 번째 점을
@@ -76,6 +106,8 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] 클릭/드래그 구분, 선택 좌표·법선·삼각형 정보와 화면 마커
 - [x] 두 표면점 A/B의 3D 직선거리, 연결선, 거리 라벨과 측정 초기화
 - [x] 모델 좌표 기반 +X/+Y/+Z Plane Clipping Preview와 실시간 거리 조절
+- [x] 실행 파일 기준 Asset 탐색, Windows x64 ZIP, 별도 폴더 Release Smoke Test
+- [x] 실제 Viewer 스크린샷 5장과 50초 P0 Demo
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
