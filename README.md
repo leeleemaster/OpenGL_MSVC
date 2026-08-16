@@ -32,6 +32,12 @@ Debug 실행 파일은 다음과 같이 실행합니다. 창은 `Escape` 키 또
 ./out/build/msvc/Debug/DentalViz.exe
 ```
 
+### VS Code
+
+Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소 폴더를 신뢰한 뒤
+`F5`를 누르면 Debug 빌드, 테스트, 실행이 순서대로 진행됩니다. `Ctrl+Shift+B`는 기본
+Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택할 수 있습니다.
+
 ## 현재 상태
 
 - [x] 범위, 좌표계, 완료조건 고정

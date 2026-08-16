@@ -18,8 +18,15 @@ function Invoke-CleanProcess {
     $startInfo.FileName = $FilePath
     $startInfo.UseShellExecute = $false
 
-    foreach ($argument in $ArgumentList) {
-        [void]$startInfo.ArgumentList.Add($argument)
+    if ($null -ne $startInfo.PSObject.Properties["ArgumentList"]) {
+        foreach ($argument in $ArgumentList) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+    } else {
+        # Windows PowerShell 5.1 uses .NET Framework, where ProcessStartInfo
+        # does not expose ArgumentList. These arguments are fixed CMake preset
+        # switches without whitespace, so a joined command line is equivalent.
+        $startInfo.Arguments = $ArgumentList -join " "
     }
 
     # Some agent shells expose both `Path` and `PATH`. MSBuild treats those as
