@@ -4,6 +4,7 @@
 #include "core/BuildInfo.h"
 #include "core/MeshData.h"
 #include "core/OrbitCamera.h"
+#include "core/PointMeasurement.h"
 #include "core/RayPicking.h"
 #include "io/MeshLoader.h"
 #include "renderer/GpuMesh.h"
@@ -45,13 +46,15 @@ std::filesystem::path findShaderDirectory()
         if (std::filesystem::is_regular_file(candidate / "mesh.vert") &&
             std::filesystem::is_regular_file(candidate / "mesh.frag") &&
             std::filesystem::is_regular_file(candidate / "marker.vert") &&
-            std::filesystem::is_regular_file(candidate / "marker.frag")) {
+            std::filesystem::is_regular_file(candidate / "marker.frag") &&
+            std::filesystem::is_regular_file(candidate / "measurement_line.vert") &&
+            std::filesystem::is_regular_file(candidate / "measurement_line.frag")) {
             return candidate;
         }
     }
 
     throw std::runtime_error(
-        "Shader assets were not found. Expected mesh and marker shaders in assets/shaders.");
+        "Shader assets were not found. Expected mesh, marker, and measurement line shaders.");
 }
 
 bool keyPressedOnce(GLFWwindow* window, int key, bool& wasPressed) noexcept
@@ -126,10 +129,7 @@ void printModelInformation(const dentalviz::ViewerModelInfo& information)
                   << "Load time: " << std::fixed << std::setprecision(3)
                   << information.loadMilliseconds << " ms\n";
     }
-    std::cout << "Assumed unit: 1 model unit = 1 mm"
-              << (information.loadedFromFile
-                      ? " (source unit is not treated as reliable metadata)\n"
-                      : "\n");
+    std::cout << "Unit: model units (source scale is not inferred)\n";
 }
 
 } // namespace
@@ -235,7 +235,9 @@ int Application::run(const ApplicationRunOptions& options)
         shaderDirectory / "mesh.frag");
     const SelectionMarker selectionMarker(
         shaderDirectory / "marker.vert",
-        shaderDirectory / "marker.frag");
+        shaderDirectory / "marker.frag",
+        shaderDirectory / "measurement_line.vert",
+        shaderDirectory / "measurement_line.frag");
 
     printModelInformation(uiState.model);
     std::cout << "Shaders: " << shaderDirectory.string() << '\n';
@@ -254,7 +256,7 @@ int Application::run(const ApplicationRunOptions& options)
     camera.fit(modelBounds, initialAspectRatio);
     CameraController cameraController(window_, camera, modelBounds);
     ViewerUi viewerUi(window_);
-    std::cout << "Controls: Left click select | Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
+    std::cout << "Controls: Left click A/B | Left drag orbit | Middle drag pan | Wheel zoom | F fit\n"
               << "Render modes: 1 Solid | 2 Wireframe | 3 Normals | Esc close\n";
 
     bool solidWasPressed = false;
@@ -308,7 +310,7 @@ int Application::run(const ApplicationRunOptions& options)
                 uiState.model = std::move(replacementInformation);
                 cameraController.setModelBounds(modelBounds);
                 camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
-                uiState.selection.reset();
+                uiState.measurement.reset();
                 uiState.statusMessage = "Model loaded successfully.";
                 uiState.statusIsError = false;
                 printModelInformation(uiState.model);
@@ -321,6 +323,11 @@ int Application::run(const ApplicationRunOptions& options)
 
         if (uiActions.resetCamera) {
             camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
+        }
+        if (uiActions.resetMeasurement) {
+            uiState.measurement.reset();
+            uiState.statusMessage = "Measurement reset. Select Point A.";
+            uiState.statusIsError = false;
         }
 
         const bool solidPressed = keyPressedOnce(window_, GLFW_KEY_1, solidWasPressed);
@@ -366,17 +373,27 @@ int Application::run(const ApplicationRunOptions& options)
                 std::clamp(normalizedY, 0.0F, 1.0F),
                 view,
                 projection);
-            uiState.selection = pickMesh(worldRay, modelData);
-            if (uiState.selection.has_value()) {
-                std::ostringstream status;
-                status << "Selected triangle #" << uiState.selection->triangleIndex << '.';
-                uiState.statusMessage = status.str();
-                std::cout << "Selection: triangle #" << uiState.selection->triangleIndex
-                          << " at " << uiState.selection->position.x << ", "
-                          << uiState.selection->position.y << ", "
-                          << uiState.selection->position.z << '\n';
+            const std::optional<RayHit> hit = pickMesh(worldRay, modelData);
+            if (hit.has_value()) {
+                const MeasurementUpdate update = uiState.measurement.select(hit.value());
+                switch (update) {
+                case MeasurementUpdate::pointASet:
+                    uiState.statusMessage = "Point A selected. Select Point B.";
+                    break;
+                case MeasurementUpdate::pointBSet:
+                    uiState.statusMessage = "Measurement complete. A third click starts a new A.";
+                    break;
+                case MeasurementUpdate::restartedWithPointA:
+                    uiState.statusMessage = "New Point A selected. Select Point B.";
+                    break;
+                }
+                std::cout << "Measurement point: triangle #" << hit->triangleIndex
+                          << " at " << hit->position.x << ", "
+                          << hit->position.y << ", "
+                          << hit->position.z << '\n';
             } else {
-                uiState.statusMessage = "Selection cleared: no surface at click.";
+                uiState.measurement.reset();
+                uiState.statusMessage = "Measurement cleared: no surface at click.";
             }
             uiState.statusIsError = false;
         }
@@ -418,8 +435,42 @@ int Application::run(const ApplicationRunOptions& options)
         if (uiState.renderMode == RenderMode::wireframe) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        if (uiState.selection.has_value()) {
-            selectionMarker.draw(uiState.selection->position, view, projection);
+        constexpr glm::vec3 pointAColor(1.0F, 0.30F, 0.055F);
+        constexpr glm::vec3 pointBColor(0.10F, 0.82F, 1.0F);
+        constexpr glm::vec3 segmentColor(0.98F, 0.80F, 0.24F);
+        if (uiState.measurement.pointA().has_value() &&
+            uiState.measurement.pointB().has_value()) {
+            selectionMarker.drawSegment(
+                uiState.measurement.pointA()->position,
+                uiState.measurement.pointB()->position,
+                segmentColor,
+                view,
+                projection);
+        }
+        if (uiState.measurement.pointA().has_value()) {
+            selectionMarker.drawMarker(
+                uiState.measurement.pointA()->position,
+                pointAColor,
+                view,
+                projection);
+        }
+        if (uiState.measurement.pointB().has_value()) {
+            selectionMarker.drawMarker(
+                uiState.measurement.pointB()->position,
+                pointBColor,
+                view,
+                projection);
+        }
+
+        if (const std::optional<float> distance = uiState.measurement.distance();
+            distance.has_value()) {
+            std::ostringstream label;
+            label << "3D 직선거리: " << std::fixed << std::setprecision(3)
+                  << distance.value() << " model units";
+            const glm::vec3 midpoint =
+                (uiState.measurement.pointA()->position +
+                 uiState.measurement.pointB()->position) * 0.5F;
+            viewerUi.drawMeasurementLabel(midpoint, view, projection, label.str());
         }
 
         glDisable(GL_SCISSOR_TEST);

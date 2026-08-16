@@ -2,6 +2,8 @@
 
 out vec4 fragmentColor;
 
+uniform vec3 uColor;
+
 void main()
 {
     vec2 centered = gl_PointCoord * 2.0 - 1.0;
@@ -10,8 +12,7 @@ void main()
         discard;
     }
 
-    vec3 borderColor = vec3(0.12, 0.025, 0.01);
-    vec3 markerColor = vec3(1.0, 0.30, 0.055);
+    vec3 borderColor = uColor * 0.16;
     float inside = 1.0 - smoothstep(0.52, 0.70, radiusSquared);
-    fragmentColor = vec4(mix(borderColor, markerColor, inside), 1.0);
+    fragmentColor = vec4(mix(borderColor, uColor, inside), 1.0);
 }

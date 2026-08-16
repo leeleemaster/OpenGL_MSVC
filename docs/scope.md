@@ -54,7 +54,8 @@ Every milestone must have:
 ## Terminology boundaries
 
 - Measurement means the Euclidean straight-line distance between two selected points.
-- STL contains no reliable unit metadata. A displayed `mm` value is an explicit model-unit assumption.
+- STL contains no reliable unit metadata. Measurements stay in `model units` unless reliable scale
+  metadata or an explicit user-configured conversion is added.
 - Clipping is a fragment-discard preview, not a generated cross-section or capped mesh.
 - Runtime Compile & Apply is button-driven unless automatic file watching is actually implemented.
 - GitHub Actions build and test constitutes CI; CD is claimed only if release publication is automated.

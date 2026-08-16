@@ -7,7 +7,7 @@
 | Camera forward | -Z |
 | Matrix storage | GLM column-major |
 | Clip-space depth | OpenGL NDC -1 to 1 |
-| Model unit | Unspecified by default; UI may assume 1 unit = 1 mm only when disclosed |
+| Model unit | Unspecified; UI reports `model units` unless reliable scale metadata is added |
 | Measurement | Euclidean straight-line distance |
 | Clipping plane | Model-space plane transformed consistently for rendering |
 | Color | Linear values in the first release; sRGB is deferred |

@@ -1,14 +1,16 @@
 #pragma once
 
 #include "core/MeshData.h"
-#include "core/RayPicking.h"
+#include "core/PointMeasurement.h"
 
+#include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
 #include <cstddef>
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 
 struct GLFWwindow;
 
@@ -40,7 +42,7 @@ struct ViewerUiState {
     glm::vec3 lightPosition{3.2F, 4.0F, 4.5F};
     float shininess = 72.0F;
     float framesPerSecond = 0.0F;
-    std::optional<RayHit> selection;
+    PointMeasurement measurement;
     std::string statusMessage = "Viewer ready.";
     bool statusIsError = false;
 };
@@ -66,6 +68,7 @@ struct ViewerRect {
 struct ViewerUiActions {
     std::optional<std::filesystem::path> modelToLoad;
     bool resetCamera = false;
+    bool resetMeasurement = false;
 };
 
 class ViewerUi final {
@@ -86,6 +89,11 @@ public:
         int framebufferWidth,
         int framebufferHeight);
     [[nodiscard]] ViewerUiActions draw(ViewerUiState& state);
+    void drawMeasurementLabel(
+        const glm::vec3& worldPosition,
+        const glm::mat4& view,
+        const glm::mat4& projection,
+        std::string_view label) const;
     void render();
 
     [[nodiscard]] bool wantsCaptureMouse() const noexcept;

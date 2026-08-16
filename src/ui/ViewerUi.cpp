@@ -7,6 +7,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <glm/vec4.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -34,7 +36,7 @@ void configureStyle()
     style.GrabRounding = 5.0F;
     style.WindowPadding = ImVec2(18.0F, 15.0F);
     style.FramePadding = ImVec2(9.0F, 5.0F);
-    style.ItemSpacing = ImVec2(8.0F, 7.0F);
+    style.ItemSpacing = ImVec2(8.0F, 6.0F);
     style.WindowBorderSize = 0.0F;
 
     style.Colors[ImGuiCol_WindowBg] = ImVec4(0.055F, 0.075F, 0.090F, 1.0F);
@@ -189,7 +191,16 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
 
     if (ImGui::Begin("DentalViz Properties", nullptr, windowFlags)) {
         ImGui::TextColored(ImVec4(0.30F, 0.82F, 0.85F, 1.0F), "DENTALVIZ");
-        ImGui::TextDisabled("OpenGL 3.3 Dental Mesh Viewer");
+        ImGui::SameLine();
+        ImGui::TextDisabled(
+            "OpenGL 3.3  |  %.1f FPS",
+            static_cast<double>(state.framesPerSecond));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Viewer framebuffer: %d x %d px",
+                viewerRect_.framebufferWidth,
+                viewerRect_.framebufferHeight);
+        }
 
         ImGui::SeparatorText("Model Information");
         ImGui::TextWrapped("%s", state.model.name.c_str());
@@ -203,7 +214,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             static_cast<double>(boundsSize.x),
             static_cast<double>(boundsSize.y),
             static_cast<double>(boundsSize.z));
-        ImGui::Text("Unit        1 model unit = 1 mm");
+        ImGui::Text("Unit        model units (scale unknown)");
         if (state.model.loadedFromFile) {
             ImGui::Text("Source meshes  %zu", state.model.sourceMeshCount);
             ImGui::Text("Load time      %.3f ms", state.model.loadMilliseconds);
@@ -282,11 +293,6 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         actions.resetCamera = ImGui::Button("Reset Camera", ImVec2(-1.0F, 0.0F));
 
         ImGui::SeparatorText("Status");
-        ImGui::Text(
-            "%.1f FPS  |  Viewport %d x %d px",
-            static_cast<double>(state.framesPerSecond),
-            viewerRect_.framebufferWidth,
-            viewerRect_.framebufferHeight);
         const ImVec4 statusColor = state.statusIsError
             ? ImVec4(1.0F, 0.38F, 0.32F, 1.0F)
             : ImVec4(0.48F, 0.84F, 0.68F, 1.0F);
@@ -294,31 +300,117 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         ImGui::TextWrapped("%s", state.statusMessage.c_str());
         ImGui::PopStyleColor();
 
-        ImGui::SeparatorText("Selection");
-        if (state.selection.has_value()) {
-            const RayHit& hit = state.selection.value();
-            ImGui::Text("Triangle #%zu", hit.triangleIndex);
+        ImGui::SeparatorText("3D Straight-Line Measurement");
+        if (state.measurement.pointA().has_value()) {
+            const RayHit& pointA = state.measurement.pointA().value();
             ImGui::Text(
-                "Position  %.3f, %.3f, %.3f",
-                static_cast<double>(hit.position.x),
-                static_cast<double>(hit.position.y),
-                static_cast<double>(hit.position.z));
-            ImGui::TextDisabled(
-                "Normal    %.3f, %.3f, %.3f",
-                static_cast<double>(hit.normal.x),
-                static_cast<double>(hit.normal.y),
-                static_cast<double>(hit.normal.z));
+                "A  %.3f, %.3f, %.3f",
+                static_cast<double>(pointA.position.x),
+                static_cast<double>(pointA.position.y),
+                static_cast<double>(pointA.position.z));
         } else {
-            ImGui::TextDisabled("Click a visible model surface.");
+            ImGui::TextDisabled("Select Point A on the model surface.");
         }
+        if (state.measurement.pointB().has_value()) {
+            const RayHit& pointB = state.measurement.pointB().value();
+            ImGui::Text(
+                "B  %.3f, %.3f, %.3f",
+                static_cast<double>(pointB.position.x),
+                static_cast<double>(pointB.position.y),
+                static_cast<double>(pointB.position.z));
+        } else if (state.measurement.pointA().has_value()) {
+            ImGui::TextDisabled("Select Point B on the model surface.");
+        }
+        if (const std::optional<float> distance = state.measurement.distance();
+            distance.has_value()) {
+            ImGui::TextColored(
+                ImVec4(0.98F, 0.80F, 0.24F, 1.0F),
+                "3D 직선거리  %.3f model units",
+                static_cast<double>(distance.value()));
+        }
+        ImGui::TextDisabled("Source scale is not inferred.");
+        actions.resetMeasurement =
+            ImGui::Button("Reset Measurement", ImVec2(-1.0F, 0.0F));
 
         ImGui::SeparatorText("Controls");
-        ImGui::TextDisabled("LMB Click Select  |  LMB Drag Orbit");
-        ImGui::TextDisabled("MMB Pan  |  Wheel Zoom");
-        ImGui::TextDisabled("F Fit  |  1/2/3 Render Mode");
+        ImGui::TextDisabled("LMB A/B Select | Drag Orbit | MMB Pan");
+        ImGui::TextDisabled("Wheel Zoom | F Fit | 1/2/3 Mode");
     }
     ImGui::End();
     return actions;
+}
+
+void ViewerUi::drawMeasurementLabel(
+    const glm::vec3& worldPosition,
+    const glm::mat4& view,
+    const glm::mat4& projection,
+    std::string_view label) const
+{
+    const glm::vec4 clipPosition =
+        projection * view * glm::vec4(worldPosition, 1.0F);
+    if (!std::isfinite(clipPosition.x) || !std::isfinite(clipPosition.y) ||
+        !std::isfinite(clipPosition.z) || !std::isfinite(clipPosition.w) ||
+        clipPosition.w <= 0.0F) {
+        return;
+    }
+
+    const glm::vec3 normalizedDevice = glm::vec3(clipPosition) / clipPosition.w;
+    if (normalizedDevice.x < -1.0F || normalizedDevice.x > 1.0F ||
+        normalizedDevice.y < -1.0F || normalizedDevice.y > 1.0F ||
+        normalizedDevice.z < -1.0F || normalizedDevice.z > 1.0F) {
+        return;
+    }
+
+    const ImVec2 center(
+        viewerRect_.windowX + (normalizedDevice.x * 0.5F + 0.5F) * viewerRect_.windowWidth,
+        viewerRect_.windowY + (0.5F - normalizedDevice.y * 0.5F) * viewerRect_.windowHeight);
+    const char* labelBegin = label.data();
+    const char* labelEnd = label.data() + label.size();
+    const ImVec2 textSize = ImGui::CalcTextSize(labelBegin, labelEnd);
+    const ImVec2 padding(8.0F, 5.0F);
+    ImVec2 topLeft(
+        center.x - textSize.x * 0.5F - padding.x,
+        center.y - textSize.y * 0.5F - padding.y - 14.0F);
+    const float labelWidth = textSize.x + padding.x * 2.0F;
+    const float labelHeight = textSize.y + padding.y * 2.0F;
+    constexpr float viewerMargin = 5.0F;
+    const float minimumLabelX = viewerRect_.windowX + viewerMargin;
+    const float maximumLabelX =
+        viewerRect_.windowX + viewerRect_.windowWidth - labelWidth - viewerMargin;
+    const float minimumLabelY = viewerRect_.windowY + viewerMargin;
+    const float maximumLabelY =
+        viewerRect_.windowY + viewerRect_.windowHeight - labelHeight - viewerMargin;
+    if (maximumLabelX < minimumLabelX || maximumLabelY < minimumLabelY) {
+        return;
+    }
+    topLeft.x = std::clamp(
+        topLeft.x,
+        minimumLabelX,
+        maximumLabelX);
+    topLeft.y = std::clamp(
+        topLeft.y,
+        minimumLabelY,
+        maximumLabelY);
+    const ImVec2 bottomRight(
+        topLeft.x + labelWidth,
+        topLeft.y + labelHeight);
+
+    ImDrawList* drawList = ImGui::GetForegroundDrawList();
+    drawList->AddRectFilled(
+        topLeft,
+        bottomRight,
+        IM_COL32(18, 25, 29, 225),
+        5.0F);
+    drawList->AddRect(
+        topLeft,
+        bottomRight,
+        IM_COL32(250, 205, 62, 255),
+        5.0F);
+    drawList->AddText(
+        ImVec2(topLeft.x + padding.x, topLeft.y + padding.y),
+        IM_COL32(255, 230, 145, 255),
+        labelBegin,
+        labelEnd);
 }
 
 void ViewerUi::render()

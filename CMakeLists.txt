@@ -23,6 +23,7 @@ add_library(dentalviz_core STATIC
     src/core/ClickGesture.cpp
     src/core/MeshData.cpp
     src/core/OrbitCamera.cpp
+    src/core/PointMeasurement.cpp
     src/core/RayPicking.cpp
 )
 
@@ -92,6 +93,7 @@ if(BUILD_TESTING)
         tests/ClickGestureTests.cpp
         tests/MeshLoaderTests.cpp
         tests/OrbitCameraTests.cpp
+        tests/PointMeasurementTests.cpp
         tests/RayPickingTests.cpp
         tests/SmokeTests.cpp
         tests/ViewerRectTests.cpp
