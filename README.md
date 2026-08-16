@@ -108,12 +108,14 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] 모델 좌표 기반 +X/+Y/+Z Plane Clipping Preview와 실시간 거리 조절
 - [x] 실행 파일 기준 Asset 탐색, Windows x64 ZIP, 별도 폴더 Release Smoke Test
 - [x] 실제 Viewer 스크린샷 5장과 50초 P0 Demo
+- [x] MiniShader MVP EBNF, 타입 규칙, 내장 심볼과 오류 정책 고정
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
 [`docs/coordinate-system.md`](docs/coordinate-system.md),
-[`docs/architecture.md`](docs/architecture.md)를 참고하세요. 실제 OpenGL 로컬 실행 결과는
-[`docs/verification/`](docs/verification/)에 단계별로 기록되어 있습니다.
+[`docs/architecture.md`](docs/architecture.md)를 참고하세요. P1 MiniShader의 구현 기준은
+[`docs/minishader-language.md`](docs/minishader-language.md)에 고정되어 있습니다. 실제 OpenGL
+로컬 실행 결과는 [`docs/verification/`](docs/verification/)에 단계별로 기록되어 있습니다.
 
 ## 라이선스
 
