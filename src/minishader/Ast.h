@@ -2,6 +2,7 @@
 
 #include "minishader/SourceLocation.h"
 #include "minishader/Token.h"
+#include "minishader/Type.h"
 
 #include <memory>
 #include <string>
@@ -28,6 +29,7 @@ struct Expression {
 
     ExpressionKind kind;
     SourceLocation location;
+    ValueType inferredType = ValueType::Invalid;
 };
 
 struct LiteralExpression final : Expression {
@@ -89,6 +91,7 @@ struct VariableDeclaration {
     SourceLocation location;
     std::string name;
     std::unique_ptr<Expression> initializer;
+    ValueType inferredType = ValueType::Invalid;
 };
 
 struct OutputStatement {

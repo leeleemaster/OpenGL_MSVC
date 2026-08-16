@@ -29,7 +29,9 @@ add_library(dentalviz_core STATIC
     src/minishader/Diagnostic.cpp
     src/minishader/Lexer.cpp
     src/minishader/Parser.cpp
+    src/minishader/SemanticAnalyzer.cpp
     src/minishader/Token.cpp
+    src/minishader/Type.cpp
 )
 
 target_include_directories(dentalviz_core
@@ -101,6 +103,7 @@ if(BUILD_TESTING)
         tests/MeshLoaderTests.cpp
         tests/MiniShaderLexerTests.cpp
         tests/MiniShaderParserTests.cpp
+        tests/MiniShaderSemanticTests.cpp
         tests/OrbitCameraTests.cpp
         tests/PointMeasurementTests.cpp
         tests/RayPickingTests.cpp
