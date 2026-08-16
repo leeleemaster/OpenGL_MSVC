@@ -112,6 +112,7 @@ Debug 빌드를 실행하며, `Tasks: Run Task`에서 Release 빌드도 선택�
 - [x] MiniShader Token Stream, 주석 처리와 1-based Source Location Lexer
 - [x] MiniShader Recursive Descent Parser, 연산자 우선순위와 `unique_ptr` AST
 - [x] MiniShader 이름·함수·타입·연산자 Semantic Analyzer와 다중 오류 진단
+- [x] MiniShader AST 기반 결정적 GLSL 생성, Source Mapping과 Golden Test
 - [ ] 출처와 재배포 라이선스가 확인된 Dental STL 확보
 
 자세한 범위와 기술 결정은 [`docs/scope.md`](docs/scope.md),
