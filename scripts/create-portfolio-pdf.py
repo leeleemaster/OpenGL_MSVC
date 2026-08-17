@@ -1,0 +1,846 @@
+from __future__ import annotations
+
+import argparse
+from io import BytesIO
+from pathlib import Path
+
+import qrcode
+from PIL import Image
+from reportlab.lib.colors import Color, HexColor, white
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+
+
+PAGE_WIDTH, PAGE_HEIGHT = landscape(A4)
+MARGIN = 42
+
+INK = HexColor("#102A33")
+MUTED = HexColor("#58717A")
+TEAL = HexColor("#0A7D87")
+CYAN = HexColor("#24B8C4")
+PALE = HexColor("#E7F3F4")
+PAPER = HexColor("#F5F8F8")
+GOLD = HexColor("#D7A94C")
+RED = HexColor("#B94B52")
+CHARCOAL = HexColor("#0B2027")
+
+REPOSITORY_URL = "https://github.com/leeleemaster/OpenGL_MSVC"
+DEMO_URL = (
+    "https://github.com/leeleemaster/OpenGL_MSVC/blob/main/"
+    "docs/demo/DentalViz-v0.8-portfolio-demo.mp4"
+)
+CI_URL = REPOSITORY_URL + "/actions/workflows/windows-build.yml"
+
+
+def register_fonts() -> None:
+    fonts = Path("C:/Windows/Fonts")
+    pdfmetrics.registerFont(TTFont("Malgun", str(fonts / "malgun.ttf")))
+    pdfmetrics.registerFont(TTFont("MalgunBold", str(fonts / "malgunbd.ttf")))
+    pdfmetrics.registerFont(TTFont("Consolas", str(fonts / "consola.ttf")))
+    pdfmetrics.registerFont(TTFont("ConsolasBold", str(fonts / "consolab.ttf")))
+
+
+def wrap_text(text: str, font: str, size: float, max_width: float) -> list[str]:
+    words: list[str] = []
+    for word in text.split():
+        if pdfmetrics.stringWidth(word, font, size) <= max_width:
+            words.append(word)
+            continue
+        chunk = ""
+        for character in word:
+            candidate = chunk + character
+            if chunk and pdfmetrics.stringWidth(candidate, font, size) > max_width:
+                words.append(chunk)
+                chunk = character
+            else:
+                chunk = candidate
+        if chunk:
+            words.append(chunk)
+    if not words:
+        return [""]
+    lines: list[str] = []
+    current = words[0]
+    for word in words[1:]:
+        candidate = current + " " + word
+        if pdfmetrics.stringWidth(candidate, font, size) <= max_width:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    lines.append(current)
+    return lines
+
+
+def draw_paragraph(
+    pdf: canvas.Canvas,
+    text: str,
+    x: float,
+    y: float,
+    width: float,
+    *,
+    size: float = 11,
+    leading: float = 17,
+    color: Color = INK,
+    font: str = "Malgun",
+) -> float:
+    pdf.setFont(font, size)
+    pdf.setFillColor(color)
+    for line in wrap_text(text, font, size, width):
+        pdf.drawString(x, y, line)
+        y -= leading
+    return y
+
+
+def draw_bullets(
+    pdf: canvas.Canvas,
+    items: list[str],
+    x: float,
+    y: float,
+    width: float,
+    *,
+    size: float = 10.5,
+    leading: float = 16,
+    color: Color = INK,
+) -> float:
+    for item in items:
+        lines = wrap_text(item, "Malgun", size, width - 18)
+        pdf.setFillColor(TEAL)
+        pdf.circle(x + 4, y + 3, 2.2, fill=1, stroke=0)
+        pdf.setFillColor(color)
+        pdf.setFont("Malgun", size)
+        for index, line in enumerate(lines):
+            pdf.drawString(x + 16, y, line)
+            y -= leading
+            if index == 0:
+                continue
+        y -= 4
+    return y
+
+
+def draw_footer(pdf: canvas.Canvas, page_number: int) -> None:
+    pdf.setStrokeColor(HexColor("#C8D7DA"))
+    pdf.line(MARGIN, 25, PAGE_WIDTH - MARGIN, 25)
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Malgun", 7.5)
+    pdf.drawString(MARGIN, 12, "DentalViz · C++20 / OpenGL 3.3 Core · leeleemaster")
+    pdf.drawRightString(PAGE_WIDTH - MARGIN, 12, f"{page_number:02d} / 12")
+
+
+def begin_page(
+    pdf: canvas.Canvas,
+    page_number: int,
+    kicker: str,
+    title: str,
+    subtitle: str = "",
+) -> None:
+    pdf.setFillColor(PAPER)
+    pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, fill=1, stroke=0)
+    pdf.setFillColor(TEAL)
+    pdf.roundRect(MARGIN, PAGE_HEIGHT - 51, 106, 19, 9, fill=1, stroke=0)
+    pdf.setFillColor(white)
+    pdf.setFont("MalgunBold", 8)
+    pdf.drawCentredString(MARGIN + 53, PAGE_HEIGHT - 44, kicker.upper())
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 24)
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 83, title)
+    if subtitle:
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 9)
+        pdf.drawRightString(PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 76, subtitle)
+    draw_footer(pdf, page_number)
+
+
+def draw_card(
+    pdf: canvas.Canvas,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    fill: Color = white,
+    stroke: Color = HexColor("#D6E3E5"),
+    radius: float = 10,
+) -> None:
+    pdf.setFillColor(fill)
+    pdf.setStrokeColor(stroke)
+    pdf.setLineWidth(0.8)
+    pdf.roundRect(x, y, width, height, radius, fill=1, stroke=1)
+
+
+def draw_image_fit(
+    pdf: canvas.Canvas,
+    path: Path,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    *,
+    background: Color = CHARCOAL,
+) -> None:
+    draw_card(pdf, x, y, width, height, fill=background, stroke=background, radius=8)
+    with Image.open(path) as image:
+        image_width, image_height = image.size
+    scale = min((width - 8) / image_width, (height - 8) / image_height)
+    rendered_width = image_width * scale
+    rendered_height = image_height * scale
+    pdf.drawImage(
+        str(path),
+        x + (width - rendered_width) / 2,
+        y + (height - rendered_height) / 2,
+        rendered_width,
+        rendered_height,
+        preserveAspectRatio=True,
+        mask="auto",
+    )
+
+
+def draw_label(pdf: canvas.Canvas, text: str, x: float, y: float, color: Color = TEAL) -> None:
+    width = pdfmetrics.stringWidth(text, "MalgunBold", 8) + 18
+    pdf.setFillColor(color)
+    pdf.roundRect(x, y - 3, width, 17, 8, fill=1, stroke=0)
+    pdf.setFillColor(white)
+    pdf.setFont("MalgunBold", 8)
+    pdf.drawString(x + 9, y + 2, text)
+
+
+def draw_metric(
+    pdf: canvas.Canvas,
+    x: float,
+    y: float,
+    width: float,
+    value: str,
+    label: str,
+    detail: str = "",
+) -> None:
+    draw_card(pdf, x, y, width, 72, fill=white)
+    pdf.setFillColor(TEAL)
+    pdf.setFont("MalgunBold", 20)
+    pdf.drawString(x + 16, y + 39, value)
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 9)
+    pdf.drawString(x + 16, y + 22, label)
+    if detail:
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 7.2)
+        pdf.drawString(x + 16, y + 9, detail)
+
+
+def qr_image(url: str) -> ImageReader:
+    image = qrcode.make(url, border=2)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return ImageReader(buffer)
+
+
+def draw_qr_link(
+    pdf: canvas.Canvas,
+    url: str,
+    label: str,
+    x: float,
+    y: float,
+    size: float = 82,
+) -> None:
+    pdf.setFillColor(white)
+    pdf.roundRect(x - 7, y - 24, size + 14, size + 36, 9, fill=1, stroke=0)
+    pdf.drawImage(qr_image(url), x, y, size, size, mask="auto")
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 8)
+    pdf.drawCentredString(x + size / 2, y - 13, label)
+    pdf.linkURL(url, (x - 7, y - 24, x + size + 7, y + size + 12), relative=0)
+
+
+def draw_link(
+    pdf: canvas.Canvas,
+    label: str,
+    url: str,
+    x: float,
+    y: float,
+    width: float,
+    display: str | None = None,
+) -> None:
+    pdf.setFillColor(TEAL)
+    pdf.setFont("MalgunBold", 9)
+    pdf.drawString(x, y, label)
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Consolas", 7.1)
+    for line in wrap_text(display or url, "Consolas", 7.1, width):
+        y -= 12
+        pdf.drawString(x, y, line)
+    pdf.linkURL(url, (x, y - 3, x + width, y + 27), relative=0)
+
+
+def draw_pipeline(
+    pdf: canvas.Canvas,
+    nodes: list[tuple[str, str]],
+    x: float,
+    y: float,
+    total_width: float,
+    *,
+    height: float = 58,
+) -> None:
+    gap = 16
+    node_width = (total_width - gap * (len(nodes) - 1)) / len(nodes)
+    for index, (title, detail) in enumerate(nodes):
+        node_x = x + index * (node_width + gap)
+        draw_card(pdf, node_x, y, node_width, height, fill=white)
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 9)
+        pdf.drawCentredString(node_x + node_width / 2, y + 34, title)
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 6.7)
+        pdf.drawCentredString(node_x + node_width / 2, y + 18, detail)
+        if index < len(nodes) - 1:
+            start = node_x + node_width + 3
+            pdf.setStrokeColor(CYAN)
+            pdf.setLineWidth(2)
+            pdf.line(start, y + height / 2, start + gap - 6, y + height / 2)
+            pdf.setFillColor(CYAN)
+            pdf.line(start + gap - 10, y + height / 2 + 3, start + gap - 6, y + height / 2)
+            pdf.line(start + gap - 10, y + height / 2 - 3, start + gap - 6, y + height / 2)
+
+
+def page_cover(pdf: canvas.Canvas, screenshots: Path, applicant: str) -> None:
+    pdf.setFillColor(CHARCOAL)
+    pdf.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, fill=1, stroke=0)
+    pdf.setFillColor(Color(0.05, 0.28, 0.32, alpha=1))
+    pdf.circle(PAGE_WIDTH - 75, PAGE_HEIGHT - 70, 170, fill=1, stroke=0)
+    pdf.setFillColor(Color(0.08, 0.48, 0.52, alpha=1))
+    pdf.circle(PAGE_WIDTH - 5, -15, 220, fill=1, stroke=0)
+    draw_image_fit(pdf, screenshots / "01_overview.png", 405, 105, 382, 310)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("MalgunBold", 10)
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 66, "HUvitz 3D GRAPHICS DEVELOPER PORTFOLIO")
+    pdf.setFillColor(white)
+    pdf.setFont("MalgunBold", 38)
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 134, "DentalViz")
+    pdf.setFont("MalgunBold", 19)
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 171, "C++ Dental 3D Visualization")
+    pdf.drawString(MARGIN, PAGE_HEIGHT - 198, "with MiniShader Runtime")
+    pdf.setFillColor(HexColor("#A7CED1"))
+    pdf.setFont("Malgun", 10)
+    draw_paragraph(
+        pdf,
+        "상용 C++ 응용 SW 경험을 OpenGL 기반 3D Viewer, Geometry Interaction, "
+        "안전한 Runtime Shader 교체 구조로 확장한 실구현 프로젝트",
+        MARGIN,
+        PAGE_HEIGHT - 235,
+        315,
+        size=10,
+        leading=16,
+        color=HexColor("#C7E0E2"),
+    )
+    pdf.setFillColor(GOLD)
+    pdf.roundRect(MARGIN, 104, 248, 48, 8, fill=1, stroke=0)
+    pdf.setFillColor(CHARCOAL)
+    pdf.setFont("MalgunBold", 11)
+    pdf.drawString(MARGIN + 15, 133, applicant)
+    pdf.setFont("Malgun", 8.5)
+    pdf.drawString(MARGIN + 15, 118, "휴비츠 3D 그래픽스 개발자 지원 · 2026.08")
+    draw_qr_link(pdf, REPOSITORY_URL, "GitHub", 300, 67, 76)
+    pdf.setFillColor(HexColor("#A7CED1"))
+    pdf.setFont("Malgun", 7.5)
+    pdf.drawString(MARGIN, 34, "Non-clinical portfolio prototype · model units · straight-line measurement")
+    pdf.showPage()
+
+
+def page_background(pdf: canvas.Canvas) -> None:
+    begin_page(pdf, 2, "01 · CONTEXT", "배경과 목표", "상용 응용 SW에서 Dental 3D Graphics로")
+    draw_card(pdf, MARGIN, 82, 345, 385, fill=white)
+    draw_label(pdf, "CAREER NARRATIVE", MARGIN + 20, 435)
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 18)
+    pdf.drawString(MARGIN + 20, 395, "그래픽 처리 경험을")
+    pdf.drawString(MARGIN + 20, 369, "3D 파이프라인으로 확장")
+    draw_paragraph(
+        pdf,
+        "C++/MFC 기반 상용 소프트웨어 개발과 GDI+, MapLibre, Fabric.js 기반의 "
+        "시각화 경험을 바탕으로, 렌더링부터 Geometry Interaction까지 직접 검증할 수 "
+        "있는 OpenGL 프로젝트를 설계했습니다.",
+        MARGIN + 20,
+        330,
+        302,
+        size=10.5,
+        leading=18,
+    )
+    draw_bullets(
+        pdf,
+        [
+            "문제: Dental mesh를 탐색하고 표면 위치와 직선거리를 확인하는 Windows 도구",
+            "목표: Camera, Rendering, Picking, Measurement, Clipping을 한 Viewer에 통합",
+            "확장: 반복 Material 표현을 제한된 MiniShader DSL과 명시적 Apply 흐름으로 연결",
+        ],
+        MARGIN + 20,
+        235,
+        302,
+    )
+    right_x = 420
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 15)
+    pdf.drawString(right_x, 438, "설계 기준")
+    standards = [
+        ("실행 가능", "MSVC Release와 Windows ZIP을 실제 GPU에서 검증"),
+        ("경계 명확", "직선거리, Clipping Preview, 비임상 prototype으로 정확히 표현"),
+        ("근거 중심", "63 tests, CI, benchmark, Demo를 기술 문장과 연결"),
+        ("안전한 교체", "오류가 난 후보 Shader는 현재 프로그램을 바꾸지 않음"),
+    ]
+    y = 375
+    for index, (title, detail) in enumerate(standards, start=1):
+        draw_card(pdf, right_x, y, 366, 65, fill=PALE)
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 15)
+        pdf.drawString(right_x + 15, y + 34, f"0{index}")
+        pdf.setFillColor(INK)
+        pdf.setFont("MalgunBold", 10)
+        pdf.drawString(right_x + 53, y + 39, title)
+        draw_paragraph(pdf, detail, right_x + 53, y + 22, 292, size=8, leading=12, color=MUTED)
+        y -= 77
+    pdf.showPage()
+
+
+def page_features(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 3, "02 · PRODUCT", "기능 개요", "실제 Release UI · 1280×720")
+    draw_image_fit(pdf, screenshots / "01_overview.png", MARGIN, 193, 475, 274)
+    features = [
+        ("01", "Orbit / Pan / Zoom", "bounds 기반 Fit 포함"),
+        ("02", "Mesh Rendering", "Solid / Wireframe / Normal"),
+        ("03", "Ray Picking", "최근접 triangle 선택"),
+        ("04", "3D Measurement", "두 표면점의 직선거리"),
+        ("05", "Clipping Preview", "model-space plane discard"),
+        ("06", "MiniShader", "검증 후 Runtime Apply"),
+    ]
+    start_x, start_y = 545, 392
+    for index, (number, title, detail) in enumerate(features):
+        column = index % 2
+        row = index // 2
+        x = start_x + column * 124
+        y = start_y - row * 91
+        draw_card(pdf, x, y, 112, 78, fill=white)
+        pdf.setFillColor(CYAN)
+        pdf.setFont("MalgunBold", 8)
+        pdf.drawString(x + 12, y + 55, number)
+        pdf.setFillColor(INK)
+        pdf.setFont("MalgunBold", 8.5)
+        pdf.drawString(x + 12, y + 37, title)
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 6.6)
+        for line_index, line in enumerate(wrap_text(detail, "Malgun", 6.6, 90)):
+            pdf.drawString(x + 12, y + 21 - line_index * 10, line)
+    draw_card(pdf, MARGIN, 76, 745, 87, fill=CHARCOAL, stroke=CHARCOAL)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("MalgunBold", 9)
+    pdf.drawString(MARGIN + 18, 137, "DIRECT IMPLEMENTATION")
+    pdf.setFillColor(white)
+    pdf.setFont("Malgun", 8.5)
+    pdf.drawString(MARGIN + 18, 116, "Renderer · Camera · Bounds · Picking · Measurement · Clipping · MiniShader compiler/runtime")
+    pdf.setFillColor(HexColor("#9FC5C8"))
+    pdf.setFont("Malgun", 7.4)
+    pdf.drawString(MARGIN + 18, 94, "Libraries: GLFW / GLAD / GLM / Dear ImGui / Assimp / Catch2 · 역할과 소유권 경계를 분리")
+    pdf.showPage()
+
+
+def page_architecture(pdf: canvas.Canvas) -> None:
+    begin_page(pdf, 4, "03 · ARCHITECTURE", "테스트 가능한 Core와 OpenGL 경계", "CPU data와 GPU handle의 소유권 분리")
+    left_x, right_x = MARGIN, 445
+    draw_card(pdf, left_x, 128, 360, 330, fill=white)
+    draw_label(pdf, "CONTEXT-FREE CORE", left_x + 18, 426)
+    core_nodes = [
+        ("Mesh I/O", "Assimp → canonical MeshData"),
+        ("Geometry", "Bounds · Ray · AABB · Triangle"),
+        ("Camera", "View / Projection · DPI mapping"),
+        ("MiniShader", "Lexer → AST → Semantic → GLSL"),
+    ]
+    y = 350
+    for title, detail in core_nodes:
+        draw_card(pdf, left_x + 20, y, 320, 51, fill=PALE)
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 9)
+        pdf.drawString(left_x + 36, y + 29, title)
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 7.4)
+        pdf.drawRightString(left_x + 322, y + 29, detail)
+        y -= 63
+    draw_card(pdf, right_x, 128, 350, 330, fill=CHARCOAL, stroke=CHARCOAL)
+    draw_label(pdf, "OPENGL APPLICATION", right_x + 18, 426, GOLD)
+    gl_nodes = [
+        ("Application", "frame orchestration / error UI"),
+        ("ViewerUi", "input capture / explicit actions"),
+        ("GpuMesh", "move-only VAO / VBO / EBO"),
+        ("Renderer", "candidate program / Last Known Good"),
+    ]
+    y = 350
+    for title, detail in gl_nodes:
+        pdf.setFillColor(HexColor("#15363F"))
+        pdf.roundRect(right_x + 20, y, 310, 51, 8, fill=1, stroke=0)
+        pdf.setFillColor(GOLD)
+        pdf.setFont("MalgunBold", 9)
+        pdf.drawString(right_x + 36, y + 29, title)
+        pdf.setFillColor(HexColor("#B9D2D5"))
+        pdf.setFont("Malgun", 7.4)
+        pdf.drawRightString(right_x + 312, y + 29, detail)
+        y -= 63
+    pdf.setStrokeColor(CYAN)
+    pdf.setLineWidth(3)
+    pdf.line(407, 292, 438, 292)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("MalgunBold", 7)
+    pdf.drawCentredString(422, 306, "validated data")
+    draw_card(pdf, MARGIN, 65, 753, 44, fill=PALE)
+    pdf.setFillColor(INK)
+    pdf.setFont("Malgun", 8.2)
+    pdf.drawCentredString(PAGE_WIDTH / 2, 83, "핵심 원칙 · GL context 없이 기하/컴파일러를 테스트하고, OpenGL handle은 move-only RAII 객체만 소유")
+    pdf.showPage()
+
+
+def page_rendering(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 5, "04 · RENDERING", "Indexed Mesh Rendering Pipeline", "VAO / VBO / EBO · GLSL · Blinn-Phong")
+    nodes = [
+        ("Mesh File", "STL / OBJ"),
+        ("CPU Mesh", "vertices / indices"),
+        ("GPU Mesh", "VAO / VBO / EBO"),
+        ("Vertex", "MVP / normal matrix"),
+        ("Raster", "indexed triangles"),
+        ("Fragment", "solid / normal / clip"),
+        ("Framebuffer", "viewer viewport"),
+    ]
+    draw_pipeline(pdf, nodes, MARGIN, 365, PAGE_WIDTH - 2 * MARGIN, height=65)
+    draw_image_fit(pdf, screenshots / "02_wireframe.png", MARGIN, 91, 354, 214)
+    draw_image_fit(pdf, screenshots / "01_overview.png", 443, 91, 354, 214)
+    draw_label(pdf, "WIREFRAME", MARGIN + 12, 278)
+    draw_label(pdf, "BLINN-PHONG SOLID", 455, 278, GOLD)
+    draw_card(pdf, MARGIN, 318, 753, 31, fill=PALE)
+    pdf.setFillColor(INK)
+    pdf.setFont("Malgun", 8)
+    pdf.drawCentredString(PAGE_WIDTH / 2, 329, "CPU MeshData는 파일/기하 검증에 재사용 · GPU upload는 렌더링 생명주기에 한정 · uniform 위치는 프로그램별 cache")
+    pdf.showPage()
+
+
+def page_camera(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 6, "05 · CAMERA", "Camera와 Dental Mesh 좌표 규약", "Orbit / Pan / Zoom · bounds-based Fit")
+    draw_image_fit(pdf, screenshots / "01_overview.png", MARGIN, 151, 430, 316)
+    right_x = 500
+    items = [
+        ("ORBIT", "target을 중심으로 yaw/pitch를 갱신하고 pitch를 제한"),
+        ("PAN", "view right/up 방향을 이용해 target과 eye를 함께 이동"),
+        ("ZOOM", "distance를 곱셈형으로 조절하고 안정 범위를 유지"),
+        ("FIT", "world-space bounds를 기준으로 거리와 near/far를 재계산"),
+    ]
+    y = 391
+    for title, detail in items:
+        draw_card(pdf, right_x, y, 297, 63, fill=white)
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 9)
+        pdf.drawString(right_x + 15, y + 37, title)
+        draw_paragraph(pdf, detail, right_x + 73, y + 37, 207, size=7.7, leading=11, color=MUTED)
+        y -= 74
+    draw_card(pdf, MARGIN, 73, 753, 59, fill=CHARCOAL, stroke=CHARCOAL)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("MalgunBold", 8.5)
+    pdf.drawString(MARGIN + 18, 108, "COORDINATE CONTRACT")
+    pdf.setFillColor(white)
+    pdf.setFont("Malgun", 8)
+    pdf.drawString(MARGIN + 18, 89, "Viewer-local mouse → NDC → inverse projection/view → world ray · STL/OBJ 실제 단위는 추론하지 않고 model units로 표시")
+    pdf.showPage()
+
+
+def page_picking(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 7, "06 · GEOMETRY", "Ray Picking과 3D 직선거리", "nearest hit · Möller-Trumbore · model units")
+    draw_image_fit(pdf, screenshots / "03_picking.png", MARGIN, 230, 353, 237)
+    draw_image_fit(pdf, screenshots / "04_measurement.png", 444, 230, 353, 237)
+    draw_label(pdf, "FIRST HIT", MARGIN + 12, 438)
+    draw_label(pdf, "TWO-POINT MEASUREMENT", 456, 438, GOLD)
+    nodes = [
+        ("Mouse", "viewer coordinates"),
+        ("World Ray", "inverse VP"),
+        ("AABB", "early reject"),
+        ("Triangles", "closest t"),
+        ("Surface Point", "world position"),
+        ("Distance", "|B - A|"),
+    ]
+    draw_pipeline(pdf, nodes, MARGIN, 133, PAGE_WIDTH - 2 * MARGIN, height=59)
+    draw_card(pdf, MARGIN, 66, 753, 49, fill=PALE)
+    pdf.setFillColor(INK)
+    pdf.setFont("MalgunBold", 8.5)
+    pdf.drawString(MARGIN + 16, 94, "정확한 표현")
+    pdf.setFont("Malgun", 8)
+    pdf.drawString(MARGIN + 100, 94, "두 표면점 사이의 3D Euclidean 직선거리이며, 표면을 따라가는 geodesic distance가 아닙니다.")
+    pdf.showPage()
+
+
+def page_clipping(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 8, "07 · INTERACTION", "Clipping Preview와 Viewer UI", "model-space plane · fragment discard")
+    draw_image_fit(pdf, screenshots / "05_clipping.png", MARGIN, 118, 470, 349)
+    right_x = 545
+    draw_card(pdf, right_x, 337, 252, 130, fill=CHARCOAL, stroke=CHARCOAL)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("ConsolasBold", 12)
+    pdf.drawString(right_x + 18, 425, "plane: dot(n, p) - d")
+    pdf.setFillColor(white)
+    pdf.setFont("Consolas", 9)
+    pdf.drawString(right_x + 18, 397, "if (signedDistance > 0.0)")
+    pdf.drawString(right_x + 32, 378, "discard;")
+    pdf.setFillColor(HexColor("#9FC5C8"))
+    pdf.setFont("Malgun", 7.2)
+    pdf.drawString(right_x + 18, 354, "plane은 model 좌표에 고정")
+    draw_card(pdf, right_x, 192, 252, 125, fill=white)
+    draw_label(pdf, "UI CONTRACT", right_x + 14, 286)
+    draw_bullets(
+        pdf,
+        [
+            "ImGui가 입력을 소비하면 Camera/Picking으로 전달하지 않음",
+            "상태 변경과 오류를 Console이 아닌 Viewer UI에도 표시",
+            "카메라 이동과 clipping plane 상태를 분리",
+        ],
+        right_x + 14,
+        260,
+        224,
+        size=7.5,
+        leading=11,
+    )
+    draw_card(pdf, right_x, 91, 252, 81, fill=HexColor("#FFF4DC"), stroke=HexColor("#EACB8B"))
+    pdf.setFillColor(RED)
+    pdf.setFont("MalgunBold", 8.5)
+    pdf.drawString(right_x + 14, 145, "LIMITATION")
+    draw_paragraph(
+        pdf,
+        "단면 mesh나 cap을 생성하지 않는 시각적 Preview입니다. 의료용 단면 생성 기능으로 표현하지 않습니다.",
+        right_x + 14,
+        124,
+        224,
+        size=7.5,
+        leading=12,
+    )
+    pdf.showPage()
+
+
+def page_minishader(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 9, "08 · MINISHADER", "작은 Material DSL", "전체 GLSL이 아닌 의도적으로 제한된 표현 계층")
+    draw_image_fit(pdf, screenshots / "06_minishader.png", MARGIN, 228, 410, 239)
+    code_x = 480
+    draw_card(pdf, code_x, 228, 317, 239, fill=CHARCOAL, stroke=CHARCOAL)
+    pdf.setFillColor(CYAN)
+    pdf.setFont("ConsolasBold", 8.5)
+    pdf.drawString(code_x + 18, 438, "material Dental {")
+    source_lines = [
+        "  let n = normalize(normal);",
+        "  let l = normalize(lightDir);",
+        "  let diffuse = max(dot(n, l), 0.0);",
+        "  let intensity = 0.25 + diffuse;",
+        "  output = baseColor * intensity;",
+        "}",
+    ]
+    pdf.setFillColor(white)
+    pdf.setFont("Consolas", 8.3)
+    y = 413
+    for line in source_lines:
+        pdf.drawString(code_x + 18, y, line)
+        y -= 23
+    cards = [
+        ("WHY SMALL", "Material 계산에 필요한 scalar/vec3와 whitelist 함수만 허용"),
+        ("WHY EXPLICIT", "편집 중 자동 반영 대신 Compile & Apply 버튼으로 교체 시점 고정"),
+        ("WHY GLSL", "검증된 AST를 GLSL로 생성하고 최종 검증은 OpenGL driver에 위임"),
+    ]
+    x = MARGIN
+    for title, detail in cards:
+        draw_card(pdf, x, 99, 239, 96, fill=white)
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 8.5)
+        pdf.drawString(x + 15, 169, title)
+        draw_paragraph(pdf, detail, x + 15, 146, 209, size=7.4, leading=12, color=MUTED)
+        x += 257
+    pdf.showPage()
+
+
+def page_compiler(pdf: canvas.Canvas, screenshots: Path) -> None:
+    begin_page(pdf, 10, "09 · SAFE RUNTIME", "Compiler Pipeline과 Last Known Good", "오류가 렌더링 상태를 손상시키지 않도록")
+    nodes = [
+        ("Lexer", "token + line/col"),
+        ("Parser", "AST + precedence"),
+        ("Semantic", "type / symbol / arity"),
+        ("GLSL", "bounded generator"),
+        ("Candidate", "compile + link"),
+        ("Swap", "success only"),
+    ]
+    draw_pipeline(pdf, nodes, MARGIN, 386, PAGE_WIDTH - 2 * MARGIN, height=65)
+    draw_image_fit(pdf, screenshots / "07_minishader_error.png", MARGIN, 101, 405, 248)
+    right_x = 478
+    draw_card(pdf, right_x, 234, 319, 115, fill=CHARCOAL, stroke=CHARCOAL)
+    pdf.setFillColor(RED)
+    pdf.setFont("ConsolasBold", 9)
+    pdf.drawString(right_x + 18, 320, "Unknown identifier: missing.")
+    pdf.setFillColor(HexColor("#B9D2D5"))
+    pdf.setFont("Malgun", 8)
+    pdf.drawString(right_x + 18, 294, "후보 생성 중단 · 현재 program은 변경하지 않음")
+    pdf.setFillColor(GOLD)
+    pdf.setFont("MalgunBold", 10)
+    pdf.drawString(right_x + 18, 263, "Last Known Good remains active")
+    draw_card(pdf, right_x, 101, 319, 112, fill=white)
+    draw_bullets(
+        pdf,
+        [
+            "최대 source 65,536 bytes · expression nesting 128",
+            "오류 line/column과 diagnostics를 UI에 표시",
+            "성공한 OpenGL program만 move assignment로 교체",
+        ],
+        right_x + 16,
+        181,
+        286,
+        size=7.8,
+        leading=12,
+    )
+    pdf.showPage()
+
+
+def page_quality(pdf: canvas.Canvas) -> None:
+    begin_page(pdf, 11, "10 · QUALITY", "Engineering Quality와 재현성", "Tests · CI · Benchmark · Windows Release")
+    draw_metric(pdf, MARGIN, 366, 170, "63 / 63", "Debug & Release tests", "Catch2 · /W4 /WX")
+    draw_metric(pdf, 229, 366, 170, "1,246", "raw benchmark samples", "100k / 500k triangles")
+    draw_metric(pdf, 416, 366, 170, "0.516 ms", "500k CPU frame median", "1280×720 · VSync Off")
+    draw_metric(pdf, 603, 366, 194, "3.321 ms", "500k Picking median", "AABB + all triangles")
+    left_x, right_x = MARGIN, 429
+    draw_card(pdf, left_x, 116, 345, 223, fill=white)
+    draw_label(pdf, "DEFENSIVE ENGINEERING", left_x + 18, 308)
+    draw_bullets(
+        pdf,
+        [
+            "move-only RAII로 VAO/VBO/EBO/Program handle 수명 한정",
+            "NaN, 손상 mesh, 과대 source, 깊은 중첩 입력을 경계에서 거부",
+            "실제 GPU에서 invalid GLSL과 Last Known Good 경로 검증",
+            "Windows package에 shaders, README, license 17건을 함께 배포",
+        ],
+        left_x + 18,
+        276,
+        310,
+        size=8.2,
+        leading=13,
+    )
+    draw_card(pdf, right_x, 116, 368, 223, fill=CHARCOAL, stroke=CHARCOAL)
+    draw_label(pdf, "REPRODUCIBLE DELIVERY", right_x + 18, 308, GOLD)
+    rows = [
+        ("Build", "CMakePresets + vcpkg manifest + MSVC"),
+        ("CI", "GitHub Actions Windows Debug/Release"),
+        ("Perf", "CSV raw samples + methodology + summary"),
+        ("Package", "ZIP smoke test from external working directory"),
+        ("Evidence", "commit별 docs/verification 기록"),
+    ]
+    y = 276
+    for label, detail in rows:
+        pdf.setFillColor(GOLD)
+        pdf.setFont("MalgunBold", 8.3)
+        pdf.drawString(right_x + 18, y, label)
+        pdf.setFillColor(HexColor("#C3DADD"))
+        pdf.setFont("Malgun", 7.7)
+        pdf.drawString(right_x + 79, y, detail)
+        y -= 33
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Malgun", 7.3)
+    pdf.drawString(MARGIN, 88, "측정 환경: NVIDIA GeForce RTX 5070 Ti · OpenGL 3.3 · Release · 2026-08-17")
+    pdf.linkURL(CI_URL, (right_x + 18, 116, right_x + 350, 330), relative=0)
+    pdf.showPage()
+
+
+def page_career(pdf: canvas.Canvas, applicant: str) -> None:
+    begin_page(pdf, 12, "11 · CONNECTION", "경력 연결과 제출 링크", "C++ 상용 SW 경험을 3D Graphics로 확장")
+    pathway = [
+        ("C++ / MFC", "상용 Windows SW"),
+        ("GDI+", "2D drawing"),
+        ("MapLibre", "map rendering"),
+        ("Fabric.js", "interactive canvas"),
+        ("OpenGL / GLSL", "3D pipeline"),
+        ("Dental 3D", "viewer interaction"),
+    ]
+    draw_pipeline(pdf, pathway, MARGIN, 386, PAGE_WIDTH - 2 * MARGIN, height=66)
+    draw_card(pdf, MARGIN, 109, 432, 236, fill=white)
+    draw_label(pdf, "ROLE EVIDENCE", MARGIN + 18, 314)
+    evidence = [
+        ("C/C++", "C++20 core, move-only RAII, CMake/MSVC"),
+        ("OpenGL", "3.3 Core, VAO/VBO/EBO, GLSL, Picking"),
+        ("Architecture", "context-free core / GL boundary / LKG"),
+        ("Commercial SW", "명시적 오류·입력 경계·Windows package"),
+        ("CI/CD", "GitHub Actions + reproducible Release scripts"),
+    ]
+    y = 278
+    for requirement, proof in evidence:
+        pdf.setFillColor(TEAL)
+        pdf.setFont("MalgunBold", 8.5)
+        pdf.drawString(MARGIN + 18, y, requirement)
+        pdf.setFillColor(MUTED)
+        pdf.setFont("Malgun", 8)
+        pdf.drawString(MARGIN + 112, y, proof)
+        y -= 34
+    draw_qr_link(pdf, REPOSITORY_URL, "GitHub Repository", 534, 193, 96)
+    draw_qr_link(pdf, DEMO_URL, "84s Demo", 672, 193, 96)
+    draw_link(pdf, "GitHub", REPOSITORY_URL, 518, 147, 270)
+    draw_link(
+        pdf,
+        "Demo",
+        DEMO_URL,
+        518,
+        105,
+        270,
+        "github.com/leeleemaster/OpenGL_MSVC / docs/demo / DentalViz-v0.8-portfolio-demo.mp4",
+    )
+    pdf.setFillColor(MUTED)
+    pdf.setFont("Malgun", 7.8)
+    pdf.drawRightString(PAGE_WIDTH - MARGIN, 76, f"Portfolio identity: {applicant}")
+    pdf.showPage()
+
+
+def build_pdf(repository_root: Path, output: Path, applicant: str) -> None:
+    register_fonts()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    screenshots = repository_root / "docs" / "screenshots"
+    required = [screenshots / f"0{index}_{name}.png" for index, name in [
+        (1, "overview"),
+        (2, "wireframe"),
+        (3, "picking"),
+        (4, "measurement"),
+        (5, "clipping"),
+        (6, "minishader"),
+        (7, "minishader_error"),
+    ]]
+    missing = [str(path) for path in required if not path.exists()]
+    if missing:
+        raise FileNotFoundError("Missing portfolio screenshots: " + ", ".join(missing))
+
+    pdf = canvas.Canvas(str(output), pagesize=(PAGE_WIDTH, PAGE_HEIGHT), pageCompression=1)
+    pdf.setTitle("DentalViz - C++ Dental 3D Visualization with MiniShader Runtime")
+    pdf.setAuthor(applicant)
+    pdf.setSubject("Huvitz 3D Graphics Developer Portfolio")
+    pdf.setKeywords("C++, OpenGL, Dental, 3D Viewer, MiniShader, MSVC")
+
+    page_cover(pdf, screenshots, applicant)
+    page_background(pdf)
+    page_features(pdf, screenshots)
+    page_architecture(pdf)
+    page_rendering(pdf, screenshots)
+    page_camera(pdf, screenshots)
+    page_picking(pdf, screenshots)
+    page_clipping(pdf, screenshots)
+    page_minishader(pdf, screenshots)
+    page_compiler(pdf, screenshots)
+    page_quality(pdf)
+    page_career(pdf, applicant)
+    pdf.save()
+
+
+def parse_arguments() -> argparse.Namespace:
+    repository_root = Path(__file__).resolve().parent.parent
+    parser = argparse.ArgumentParser(description="Create the 12-page DentalViz portfolio PDF.")
+    parser.add_argument("--applicant", default="leeleemaster")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=repository_root / "output" / "pdf" / "DentalViz_Huvitz_Portfolio.pdf",
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    arguments = parse_arguments()
+    root = Path(__file__).resolve().parent.parent
+    build_pdf(root, arguments.output.resolve(), arguments.applicant)
+    print(arguments.output.resolve())

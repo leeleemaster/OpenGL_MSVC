@@ -7,6 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [▶ 84초 최종 실행 Demo](docs/demo/DentalViz-v0.8-portfolio-demo.mp4) ·
+[Portfolio PDF](output/pdf/DentalViz_Huvitz_Portfolio.pdf) ·
 [Architecture](docs/architecture.md) ·
 [Performance](docs/performance/benchmark-summary.md) ·
 [v0.8 Source Tag](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
@@ -26,6 +27,7 @@ P0 Viewer와 P1 MiniShader는 완료됐습니다. 기본 화면은 프로젝트�
 ## Demo
 
 - [84초 최종 Portfolio Demo — Viewer + MiniShader](docs/demo/DentalViz-v0.8-portfolio-demo.mp4)
+- [12페이지 DentalViz Portfolio PDF](output/pdf/DentalViz_Huvitz_Portfolio.pdf)
 - [50초 P0 Viewer Demo (archive)](docs/demo/DentalViz-v0.5-viewer-demo.mp4)
 - [전체 Viewer](docs/screenshots/01_overview.png)
 - [Wireframe](docs/screenshots/02_wireframe.png)
