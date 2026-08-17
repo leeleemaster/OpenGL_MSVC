@@ -62,6 +62,9 @@ public static class DentalVizScreenshotNative
 
     [DllImport("user32.dll")]
     public static extern bool SetCursorPos(int x, int y);
+
+    [DllImport("user32.dll")]
+    public static extern bool SetForegroundWindow(IntPtr window);
 }
 '@
 
@@ -95,6 +98,8 @@ function Send-ClientClick {
     if (-not [DentalVizScreenshotNative]::ClientToScreen($Window, [ref]$screenPoint)) {
         throw "Could not convert DentalViz client coordinates."
     }
+    [void][DentalVizScreenshotNative]::SetForegroundWindow($Window)
+    Start-Sleep -Milliseconds 120
     [void][DentalVizScreenshotNative]::SetCursorPos($screenPoint.X, $screenPoint.Y)
     $position = Get-LongParameter -ClientX $ClientX -ClientY $ClientY
     [void][DentalVizScreenshotNative]::SendMessage($Window, 0x0200, [UIntPtr]::Zero, $position)
@@ -187,7 +192,7 @@ try {
         -Path (Join-Path $OutputDirectory "02_wireframe.png")
 
     Send-KeyPress -Window $windowHandle -VirtualKey 0x31
-    Send-ClientClick -Window $windowHandle -ClientX 172 -ClientY 485
+    Send-ClientClick -Window $windowHandle -ClientX 155 -ClientY 485
     Send-ClientClick -Window $windowHandle -ClientX 31 -ClientY 517
     Send-ClientClick -Window $windowHandle -ClientX 255 -ClientY 581
     Save-WindowScreenshot -Window $windowHandle `

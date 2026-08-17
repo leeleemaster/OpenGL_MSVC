@@ -99,6 +99,8 @@ function Send-ClientClick {
             $Window, [ref]$screenPoint)) {
         throw "Could not convert DentalViz client coordinates."
     }
+    [void][MiniShaderVerificationNative]::SetForegroundWindow($Window)
+    Start-Sleep -Milliseconds 120
     [void][MiniShaderVerificationNative]::SetCursorPos($screenPoint.X, $screenPoint.Y)
     $position = Get-LongParameter -ClientX $ClientX -ClientY $ClientY
     [void][MiniShaderVerificationNative]::SendMessage(
@@ -218,7 +220,7 @@ try {
     }
 
     Start-Sleep -Seconds 1
-    Send-ClientClick -Window $windowHandle -ClientX 275 -ClientY 485
+    Send-ClientClick -Window $windowHandle -ClientX 245 -ClientY 480
     Send-ClientClick -Window $windowHandle -ClientX 110 -ClientY 570
     Start-Sleep -Seconds 1
     Save-WindowAndViewerCapture -Window $windowHandle -Name "01-default-applied"
@@ -250,11 +252,11 @@ try {
 
 $standardOutput = Get-Content -LiteralPath $standardOutputPath -Raw
 $standardError = Get-Content -LiteralPath $standardErrorPath -Raw
-$successCount = ([regex]::Matches($standardOutput, "MiniShader revision [0-9]+ active")).Count
+$successCount = ([regex]::Matches($standardOutput, "MiniShader 개정 [0-9]+ 적용됨")).Count
 if ($successCount -ne 2) {
     throw "Expected two successful runtime applies, but found $successCount."
 }
-if (-not $standardError.Contains("Unknown identifier: missing.")) {
+if (-not $standardError.Contains("알 수 없는 식별자: missing.")) {
     throw "The invalid source did not produce the expected semantic diagnostic."
 }
 

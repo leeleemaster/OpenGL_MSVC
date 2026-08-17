@@ -15,10 +15,10 @@ std::optional<std::filesystem::path> chooseMeshFile()
 {
     std::array<wchar_t, 32'768> pathBuffer{};
     constexpr wchar_t filter[] =
-        L"Dental meshes (*.stl;*.obj)\0*.stl;*.obj\0"
-        L"STL meshes (*.stl)\0*.stl\0"
-        L"OBJ meshes (*.obj)\0*.obj\0"
-        L"All files (*.*)\0*.*\0";
+        L"치과 Mesh (*.stl;*.obj)\0*.stl;*.obj\0"
+        L"STL Mesh (*.stl)\0*.stl\0"
+        L"OBJ Mesh (*.obj)\0*.obj\0"
+        L"모든 파일 (*.*)\0*.*\0";
 
     OPENFILENAMEW dialog{};
     dialog.lStructSize = sizeof(dialog);

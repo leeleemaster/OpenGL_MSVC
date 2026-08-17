@@ -110,11 +110,11 @@ TEST_CASE("MiniShader lexer reports unknown characters and keeps advancing", "[m
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 2);
     CHECK(result.diagnostics[0].location == SourceLocation{0, 1, 1});
-    CHECK(result.diagnostics[0].message == "Unknown character: '@'");
+    CHECK(result.diagnostics[0].message == "알 수 없는 문자: '@'");
     CHECK(formatDiagnostic(result.diagnostics[0]) ==
-          "MiniShader Lexical Error\nline 1, column 1\nUnknown character: '@'");
+          "MiniShader 어휘 오류\n1행, 1열\n알 수 없는 문자: '@'");
     CHECK(result.diagnostics[1].location == SourceLocation{1, 1, 2});
-    CHECK(result.diagnostics[1].message == "Unknown character: '#'");
+    CHECK(result.diagnostics[1].message == "알 수 없는 문자: '#'");
     REQUIRE(result.tokens.size() == 2);
     CHECK(result.tokens[0].kind == TokenKind::Output);
     CHECK(result.tokens[1].kind == TokenKind::EndOfFile);

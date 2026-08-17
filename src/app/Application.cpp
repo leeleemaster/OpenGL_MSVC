@@ -110,7 +110,7 @@ const char* glString(GLenum name)
 dentalviz::ViewerModelInfo proceduralModelInfo(const dentalviz::MeshData& mesh)
 {
     dentalviz::ViewerModelInfo information;
-    information.name = "Procedural Tooth (test geometry)";
+    information.name = "절차 생성 치아 (테스트 형상)";
     information.vertexCount = mesh.vertices.size();
     information.triangleCount = mesh.indices.size() / 3;
     information.bounds = mesh.bounds();
@@ -246,11 +246,12 @@ int Application::run(const ApplicationRunOptions& options)
             MeshData loadedData = std::move(loadedModel.mesh);
             uiState.model = loadedModelInfo(loadedData, loadedModel);
             modelData = std::move(loadedData);
-            uiState.statusMessage = "Startup model loaded successfully.";
+            uiState.statusMessage = "시작 모델을 불러왔습니다.";
         } catch (const std::exception& error) {
             std::cerr << "Model load failed: " << error.what() << '\n'
                       << "Falling back to procedural test geometry.\n";
-            uiState.statusMessage = std::string("Startup model load failed: ") + error.what();
+            uiState.statusMessage =
+                "시작 모델을 불러오지 못해 절차 생성 테스트 형상을 사용합니다.";
             uiState.statusIsError = true;
         }
     }
@@ -336,7 +337,8 @@ int Application::run(const ApplicationRunOptions& options)
                     uiState.miniShader.compilerOutput = compilation.internalError;
                 }
                 uiState.miniShader.outputIsError = true;
-                uiState.statusMessage = "MiniShader failed; Last Known Good retained.";
+                uiState.statusMessage =
+                    "MiniShader 검증 실패: 마지막 정상 셰이더를 유지합니다.";
                 uiState.statusIsError = true;
                 std::cerr << uiState.miniShader.compilerOutput << '\n';
             } else {
@@ -351,20 +353,21 @@ int Application::run(const ApplicationRunOptions& options)
                     ++uiState.miniShader.appliedRevision;
                     uiState.miniShader.hasActiveShader = true;
                     uiState.miniShader.compilerOutput =
-                        "Compile & Apply succeeded. The generated shader is now active.";
+                        "컴파일 및 적용에 성공했습니다. 생성된 셰이더가 적용됐습니다.";
                     uiState.miniShader.outputIsError = false;
                     uiState.statusMessage =
-                        "MiniShader revision " +
-                        std::to_string(uiState.miniShader.appliedRevision) + " active.";
+                        "MiniShader 개정 " +
+                        std::to_string(uiState.miniShader.appliedRevision) + " 적용됨.";
                     uiState.statusIsError = false;
                     std::cout << uiState.statusMessage << '\n';
                 } catch (const std::exception& error) {
-                    uiState.miniShader.compilerOutput = error.what();
+                    uiState.miniShader.compilerOutput =
+                        "OpenGL 셰이더 컴파일에 실패했습니다. 자세한 내용은 콘솔을 확인하세요.";
                     uiState.miniShader.outputIsError = true;
                     uiState.statusMessage =
-                        "OpenGL compile failed; Last Known Good retained.";
+                        "OpenGL 컴파일 실패: 마지막 정상 셰이더를 유지합니다.";
                     uiState.statusIsError = true;
-                    std::cerr << uiState.miniShader.compilerOutput << '\n';
+                    std::cerr << error.what() << '\n';
                 }
             }
         }
@@ -385,13 +388,14 @@ int Application::run(const ApplicationRunOptions& options)
                 camera.fit(modelBounds, viewerUi.viewerRect().aspectRatio());
                 uiState.clippingPlane.reset(modelBounds);
                 uiState.measurement.reset();
-                uiState.statusMessage = "Model loaded successfully.";
+                uiState.statusMessage = "모델을 불러왔습니다.";
                 uiState.statusIsError = false;
                 printModelInformation(uiState.model);
             } catch (const std::exception& error) {
-                uiState.statusMessage = std::string("Model load failed: ") + error.what();
+                uiState.statusMessage =
+                    "모델을 불러오지 못했습니다. 자세한 내용은 콘솔을 확인하세요.";
                 uiState.statusIsError = true;
-                std::cerr << uiState.statusMessage << '\n';
+                std::cerr << "Model load failed: " << error.what() << '\n';
             }
         }
 
@@ -400,12 +404,12 @@ int Application::run(const ApplicationRunOptions& options)
         }
         if (uiActions.resetClippingPlane) {
             uiState.clippingPlane.reset(modelBounds);
-            uiState.statusMessage = "Clipping plane reset to the model center.";
+            uiState.statusMessage = "클리핑 평면을 모델 중심으로 초기화했습니다.";
             uiState.statusIsError = false;
         }
         if (uiActions.resetMeasurement) {
             uiState.measurement.reset();
-            uiState.statusMessage = "Measurement reset. Select Point A.";
+            uiState.statusMessage = "거리 측정을 초기화했습니다. A점을 선택하세요.";
             uiState.statusIsError = false;
         }
 
@@ -457,13 +461,14 @@ int Application::run(const ApplicationRunOptions& options)
                 const MeasurementUpdate update = uiState.measurement.select(hit.value());
                 switch (update) {
                 case MeasurementUpdate::pointASet:
-                    uiState.statusMessage = "Point A selected. Select Point B.";
+                    uiState.statusMessage = "A점을 선택했습니다. B점을 선택하세요.";
                     break;
                 case MeasurementUpdate::pointBSet:
-                    uiState.statusMessage = "Measurement complete. A third click starts a new A.";
+                    uiState.statusMessage =
+                        "거리 측정을 완료했습니다. 세 번째 클릭부터 새 A점을 선택합니다.";
                     break;
                 case MeasurementUpdate::restartedWithPointA:
-                    uiState.statusMessage = "New Point A selected. Select Point B.";
+                    uiState.statusMessage = "새 A점을 선택했습니다. B점을 선택하세요.";
                     break;
                 }
                 std::cout << "Measurement point: triangle #" << hit->triangleIndex
@@ -472,7 +477,8 @@ int Application::run(const ApplicationRunOptions& options)
                           << hit->position.z << '\n';
             } else {
                 uiState.measurement.reset();
-                uiState.statusMessage = "Measurement cleared: no surface at click.";
+                uiState.statusMessage =
+                    "클릭 위치에 표면이 없어 거리 측정을 초기화했습니다.";
             }
             uiState.statusIsError = false;
         }
@@ -550,7 +556,7 @@ int Application::run(const ApplicationRunOptions& options)
             distance.has_value()) {
             std::ostringstream label;
             label << "3D 직선거리: " << std::fixed << std::setprecision(3)
-                  << distance.value() << " model units";
+                  << distance.value() << " 모델 단위";
             const glm::vec3 midpoint =
                 (uiState.measurement.pointA()->position +
                  uiState.measurement.pointB()->position) * 0.5F;

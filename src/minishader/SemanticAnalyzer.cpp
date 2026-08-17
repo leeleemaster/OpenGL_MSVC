@@ -88,8 +88,8 @@ public:
         if (outputType != ValueType::Invalid && outputType != ValueType::Vec3) {
             addDiagnostic(
                 material_.output->expression->location,
-                "Output type mismatch: expected vec3, got " +
-                    std::string(valueTypeName(outputType)) + ".");
+                "Output 타입 불일치: vec3가 필요하지만 실제 타입은 " +
+                    std::string(valueTypeName(outputType)) + "입니다.");
         }
 
         std::stable_sort(
@@ -117,9 +117,9 @@ private:
                 variable.name == "baseColor") {
                 addDiagnostic(
                     variable.location,
-                    "Cannot redeclare built-in symbol: " + variable.name + ".");
+                    "내장 Symbol을 다시 선언할 수 없습니다: " + variable.name + ".");
             } else {
-                addDiagnostic(variable.location, "Duplicate variable: " + variable.name + ".");
+                addDiagnostic(variable.location, "중복 변수: " + variable.name + ".");
             }
         }
 
@@ -169,9 +169,9 @@ private:
 
         if (remainingDeclarations_.contains(identifier.name)) {
             addDiagnostic(
-                identifier.location, "Use before declaration: " + identifier.name + ".");
+                identifier.location, "선언 전에 사용한 식별자: " + identifier.name + ".");
         } else {
-            addDiagnostic(identifier.location, "Unknown identifier: " + identifier.name + ".");
+            addDiagnostic(identifier.location, "알 수 없는 식별자: " + identifier.name + ".");
         }
         return ValueType::Invalid;
     }
@@ -209,8 +209,8 @@ private:
 
         addDiagnostic(
             binary.operatorLocation,
-            "Unsupported operand types for '" + operatorText(binary.operatorKind) + "': " +
-                std::string(valueTypeName(left)) + " and " +
+            "연산자 '" + operatorText(binary.operatorKind) + "'에서 지원하지 않는 타입: " +
+                std::string(valueTypeName(left)) + ", " +
                 std::string(valueTypeName(right)) + ".");
         return ValueType::Invalid;
     }
@@ -220,16 +220,16 @@ private:
         const bool knownFunction = isKnownFunction(call.callee);
         if (!knownFunction) {
             if (symbols_.contains(call.callee)) {
-                addDiagnostic(call.location, "Identifier is not callable: " + call.callee + ".");
+                addDiagnostic(call.location, "호출할 수 없는 식별자: " + call.callee + ".");
             } else {
-                addDiagnostic(call.location, "Unknown function: " + call.callee + ".");
+                addDiagnostic(call.location, "알 수 없는 함수: " + call.callee + ".");
             }
         } else if (call.arguments.size() != expectedArgumentCount(call.callee)) {
             addDiagnostic(
                 call.location,
-                "Wrong argument count for " + call.callee + ": expected " +
-                    std::to_string(expectedArgumentCount(call.callee)) + ", got " +
-                    std::to_string(call.arguments.size()) + ".");
+                call.callee + " 함수의 인자 개수가 잘못되었습니다: 필요 " +
+                    std::to_string(expectedArgumentCount(call.callee)) + "개, 입력 " +
+                    std::to_string(call.arguments.size()) + "개입니다.");
         }
 
         std::vector<ValueType> arguments;
@@ -273,7 +273,7 @@ private:
         if (result == ValueType::Invalid) {
             addDiagnostic(
                 call.location,
-                "Unsupported argument types for " + call.callee + "(" +
+                "지원하지 않는 인자 타입: " + call.callee + "(" +
                     argumentTypeList(arguments) + ").");
         }
         return result;

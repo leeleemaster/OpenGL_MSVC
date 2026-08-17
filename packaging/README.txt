@@ -1,52 +1,51 @@
-DentalViz v1.0 Submission - Windows x64
-=======================================
+DentalViz v1.0.1 한국어판 - Windows x64
+======================================
 
-DentalViz is a C++20/OpenGL 3.3 desktop viewer for exploring and measuring
-triangle meshes. This package includes the stable P0 viewer and the optional
-P1 MiniShader Runtime Compile & Apply milestone.
+DentalViz는 삼각형 메시를 탐색하고 측정하는 C++20/OpenGL 3.3 데스크톱
+뷰어입니다. 이 패키지에는 안정화된 P0 뷰어와 P1 MiniShader 실행 중 컴파일 및 적용
+기능이 포함됩니다.
 
-Run
----
+실행
+----
 
-Double-click DentalViz.exe. The bundled procedural tooth opens without an
-external model. Use Load Model... or the command line below for STL/OBJ files:
+DentalViz.exe를 두 번 클릭하세요. 외부 모델이 없어도 번들된 절차 생성 치아가
+열립니다. STL/OBJ 파일은 UI의 '모델 불러오기...' 또는 아래 명령을 사용하세요.
 
     DentalViz.exe --model "C:\Models\dental.stl"
 
-Controls
---------
+조작법
+------
 
-Left click       Select measurement points A and B
-Left drag        Orbit camera
-Middle drag      Pan camera
-Mouse wheel      Zoom
-F                Fit model to the viewer
-1 / 2 / 3        Solid / Wireframe / Normal Color
-Escape           Close
+왼쪽 클릭       거리 측정점 A와 B 선택
+왼쪽 드래그     카메라 회전
+가운데 드래그   카메라 이동
+마우스 휠       확대·축소
+F               모델을 뷰어에 맞춤
+1 / 2 / 3       솔리드 / 와이어프레임 / 법선 색상
+Escape          종료
 
-The Properties panel provides model information, rendering settings,
-point-to-point 3D straight-line measurement, and model-space Clipping Preview.
-Measurements use model units because STL/OBJ scale metadata is not assumed.
-Clipping uses fragment discard and does not create or fill a cut surface.
+속성 패널에서 모델 정보, 렌더링 설정, 두 점 사이 3D 직선거리 측정, 모델 좌표
+클리핑 미리보기를 사용할 수 있습니다. STL/OBJ 배율 메타데이터를 가정하지 않으므로
+측정값은 모델 단위로 표시합니다. 클리핑은 프래그먼트를 버리는 미리보기이며 절단면을
+생성하거나 채우지 않습니다.
 
-The MiniShader tab contains a bounded material editor. Compile & Apply runs the
-lexer, parser, semantic validator, GLSL generator, and OpenGL compiler only when
-the button is selected. An error retains the Last Known Good shader and reports
-its line and column; no automatic file watching is performed.
+MiniShader 탭에는 제한된 재질 편집기가 있습니다. '컴파일 및 적용' 버튼을 누를 때만
+어휘 분석, 구문 분석, 의미 검증, GLSL 생성, OpenGL 컴파일을 수행합니다. 오류가 나면
+마지막 정상 셰이더를 유지하고 행과 열을 표시하며, 파일 변경을 자동 감지하지 않습니다.
 
-Requirements
-------------
+요구 사항
+---------
 
 - Windows 10/11 x64
-- GPU and driver supporting OpenGL 3.3 Core
-- Microsoft Visual C++ 2015-2022 Redistributable (x64)
+- OpenGL 3.3 Core를 지원하는 GPU와 드라이버
+- Microsoft Visual C++ 2015-2022 재배포 가능 패키지 (x64)
 
-Asset and safety notice
------------------------
+자산 및 안전 고지
+-----------------
 
-No clinical or patient model is bundled. The procedural tooth is
-project-authored test geometry and is not clinical data. DentalViz is a
-portfolio/visualization project, not a medical device or diagnostic tool.
+임상 또는 환자 모델은 포함하지 않습니다. 절차 생성 치아는 프로젝트에서 직접 만든
+테스트 형상이며 임상 데이터가 아닙니다. DentalViz는 포트폴리오/시각화 프로젝트로,
+의료기기나 진단 도구가 아닙니다.
 
-Source: https://github.com/leeleemaster/OpenGL_MSVC
-License: MIT; third-party notices are under third-party-licenses/.
+소스: https://github.com/leeleemaster/OpenGL_MSVC
+라이선스: MIT. 제3자 고지는 third-party-licenses/에 있습니다.

@@ -135,5 +135,5 @@ TEST_CASE("MiniShader GLSL generator rejects a semantically invalid AST", "[mini
     CHECK_FALSE(generation.succeeded());
     CHECK(generation.fragmentSource.empty());
     CHECK(generation.error ==
-          "MiniShader AST must pass semantic validation before GLSL generation.");
+          "GLSL 생성 전에 MiniShader AST 의미 검증을 통과해야 합니다.");
 }

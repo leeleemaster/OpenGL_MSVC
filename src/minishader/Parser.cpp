@@ -16,9 +16,9 @@ constexpr std::size_t maximumExpressionDepth = 128U;
 {
     switch (kind) {
     case TokenKind::Identifier:
-        return "identifier";
+        return "식별자";
     case TokenKind::Number:
-        return "number";
+        return "숫자";
     case TokenKind::Material:
         return "'material'";
     case TokenKind::Let:
@@ -48,18 +48,18 @@ constexpr std::size_t maximumExpressionDepth = 128U;
     case TokenKind::Semicolon:
         return "';'";
     case TokenKind::EndOfFile:
-        return "end of file";
+        return "파일 끝";
     }
 
-    return "token";
+    return "토큰";
 }
 
 [[nodiscard]] std::string foundTokenText(const Token& token)
 {
     if (token.kind == TokenKind::EndOfFile) {
-        return "end of file";
+        return "파일 끝";
     }
-    return std::string(tokenKindName(token.kind)) + " ('" + token.lexeme + "')";
+    return expectedTokenText(token.kind) + " ('" + token.lexeme + "')";
 }
 
 class RecursiveDescentParser final {
@@ -74,7 +74,7 @@ public:
         ParseResult result;
         try {
             result.material = parseMaterial();
-            consume(TokenKind::EndOfFile, "after the material declaration");
+            consume(TokenKind::EndOfFile, "Material 선언 뒤");
         } catch (const ParseAbort&) {
             result.material.reset();
         }
@@ -124,12 +124,12 @@ private:
     [[noreturn]] void failExpected(TokenKind expected, std::string_view context)
     {
         const Token& found = peek();
-        std::string message = "Expected " + expectedTokenText(expected);
+        std::string message = "필요: " + expectedTokenText(expected);
         if (!context.empty()) {
             message += " ";
             message += context;
         }
-        message += "; found ";
+        message += "; 발견: ";
         message += foundTokenText(found);
         message += ".";
         diagnostics_.push_back(Diagnostic{DiagnosticPhase::Syntax, found.location, std::move(message)});
@@ -146,9 +146,9 @@ private:
 
     [[nodiscard]] std::unique_ptr<MaterialDeclaration> parseMaterial()
     {
-        const Token& materialToken = consume(TokenKind::Material, "at the start of the source");
-        const Token& name = consume(TokenKind::Identifier, "after 'material'");
-        consume(TokenKind::LeftBrace, "after the material name");
+        const Token& materialToken = consume(TokenKind::Material, "소스 시작 위치");
+        const Token& name = consume(TokenKind::Identifier, "'material' 뒤");
+        consume(TokenKind::LeftBrace, "Material 이름 뒤");
 
         std::vector<VariableDeclaration> variables;
         while (match(TokenKind::Let)) {
@@ -156,7 +156,7 @@ private:
         }
 
         auto output = parseOutputStatement();
-        consume(TokenKind::RightBrace, "after the output statement");
+        consume(TokenKind::RightBrace, "Output 문장 뒤");
 
         auto material = std::make_unique<MaterialDeclaration>();
         material->location = materialToken.location;
@@ -169,19 +169,19 @@ private:
 
     [[nodiscard]] VariableDeclaration parseVariableDeclaration()
     {
-        const Token& name = consume(TokenKind::Identifier, "after 'let'");
-        consume(TokenKind::Equal, "after the variable name");
+        const Token& name = consume(TokenKind::Identifier, "'let' 뒤");
+        consume(TokenKind::Equal, "변수 이름 뒤");
         auto initializer = parseExpression();
-        consume(TokenKind::Semicolon, "after the variable declaration");
+        consume(TokenKind::Semicolon, "변수 선언 뒤");
         return VariableDeclaration{name.location, name.lexeme, std::move(initializer)};
     }
 
     [[nodiscard]] std::unique_ptr<OutputStatement> parseOutputStatement()
     {
-        const Token& outputToken = consume(TokenKind::Output, "after variable declarations");
-        consume(TokenKind::Equal, "after 'output'");
+        const Token& outputToken = consume(TokenKind::Output, "변수 선언 뒤");
+        consume(TokenKind::Equal, "'output' 뒤");
         auto expression = parseExpression();
-        consume(TokenKind::Semicolon, "after the output expression");
+        consume(TokenKind::Semicolon, "Output 표현식 뒤");
 
         auto output = std::make_unique<OutputStatement>();
         output->location = outputToken.location;
@@ -195,7 +195,7 @@ private:
             diagnostics_.push_back(Diagnostic{
                 DiagnosticPhase::Syntax,
                 peek().location,
-                "Expression nesting exceeds the safety limit of 128.",
+                "표현식 중첩이 안전 제한 128단계를 초과했습니다.",
             });
             throw ParseAbort{};
         }
@@ -248,11 +248,11 @@ private:
 
         if (match(TokenKind::LeftParen)) {
             auto expression = parseExpression();
-            consume(TokenKind::RightParen, "after the parenthesized expression");
+            consume(TokenKind::RightParen, "괄호 표현식 뒤");
             return expression;
         }
 
-        failExpected(TokenKind::Number, "or identifier or '(' at the start of an expression");
+        failExpected(TokenKind::Number, "또는 표현식 시작 위치의 식별자나 '('");
     }
 
     [[nodiscard]] std::unique_ptr<Expression> parseCall(const Token& identifier)
@@ -263,7 +263,7 @@ private:
                 arguments.push_back(parseExpression());
             } while (match(TokenKind::Comma));
         }
-        consume(TokenKind::RightParen, "after function arguments");
+        consume(TokenKind::RightParen, "함수 인자 뒤");
         return std::make_unique<CallExpression>(
             identifier.lexeme, identifier.location, std::move(arguments));
     }
@@ -287,7 +287,7 @@ ParseResult Parser::parse(const std::vector<Token>& tokens)
         result.diagnostics.push_back(Diagnostic{
             DiagnosticPhase::Syntax,
             location,
-            "Token stream must end with EndOfFile.",
+            "Token Stream은 EndOfFile로 끝나야 합니다.",
         });
         return result;
     }

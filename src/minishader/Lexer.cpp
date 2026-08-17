@@ -220,7 +220,7 @@ private:
             result_.diagnostics.push_back(Diagnostic{
                 DiagnosticPhase::Lexical,
                 start,
-                "Unknown character: " + describeCharacter(character),
+                "알 수 없는 문자: " + describeCharacter(character),
             });
             break;
         }

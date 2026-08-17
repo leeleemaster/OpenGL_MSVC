@@ -8,21 +8,21 @@ std::string_view diagnosticPhaseName(DiagnosticPhase phase) noexcept
 {
     switch (phase) {
     case DiagnosticPhase::Lexical:
-        return "Lexical";
+        return "어휘";
     case DiagnosticPhase::Syntax:
-        return "Syntax";
+        return "구문";
     case DiagnosticPhase::Semantic:
-        return "Semantic";
+        return "의미";
     }
 
-    return "Unknown";
+    return "알 수 없음";
 }
 
 std::string formatDiagnostic(const Diagnostic& diagnostic)
 {
     std::ostringstream stream;
-    stream << "MiniShader " << diagnosticPhaseName(diagnostic.phase) << " Error\n"
-           << "line " << diagnostic.location.line << ", column " << diagnostic.location.column
+    stream << "MiniShader " << diagnosticPhaseName(diagnostic.phase) << " 오류\n"
+           << diagnostic.location.line << "행, " << diagnostic.location.column << "열"
            << '\n'
            << diagnostic.message;
     return stream.str();

@@ -21,5 +21,11 @@ CMakeLists.txt text eol=lf
 *.vert text eol=lf
 *.frag text eol=lf
 
+*.gif binary
+*.mp4 binary
+*.pdf binary
+*.png binary
+*.zip binary
+
 *.bat text eol=crlf
 *.cmd text eol=crlf

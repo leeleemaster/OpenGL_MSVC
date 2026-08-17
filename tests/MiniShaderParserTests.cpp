@@ -92,7 +92,7 @@ TEST_CASE("MiniShader parser reports an unclosed parenthesis", "[minishader][par
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 1);
     CHECK(result.diagnostics[0].phase == DiagnosticPhase::Syntax);
-    CHECK(result.diagnostics[0].message.find("Expected ')'") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("필요: ')'") != std::string::npos);
     CHECK(result.diagnostics[0].location.line == 1);
     CHECK(result.diagnostics[0].location.column == 40);
 }
@@ -109,8 +109,8 @@ TEST_CASE("MiniShader parser requires a declaration semicolon", "[minishader][pa
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 1);
-    CHECK(result.diagnostics[0].message.find("Expected ';'") != std::string::npos);
-    CHECK(result.diagnostics[0].message.find("Output ('output')") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("필요: ';'") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("'output' ('output')") != std::string::npos);
     CHECK(result.diagnostics[0].location.line == 3);
     CHECK(result.diagnostics[0].location.column == 3);
 }
@@ -121,7 +121,7 @@ TEST_CASE("MiniShader parser rejects statements outside a material", "[minishade
 
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 1);
-    CHECK(result.diagnostics[0].message.find("Expected 'material'") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("필요: 'material'") != std::string::npos);
     CHECK(result.diagnostics[0].location.line == 1);
     CHECK(result.diagnostics[0].location.column == 1);
 }

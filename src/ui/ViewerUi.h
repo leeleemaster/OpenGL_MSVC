@@ -41,7 +41,7 @@ struct MiniShaderEditorState {
 
     std::string source;
     std::string generatedGlsl;
-    std::string compilerOutput = "Edit the material, then select Compile & Apply.";
+    std::string compilerOutput = "재질 코드를 편집한 뒤 '컴파일 및 적용'을 누르세요.";
     bool outputIsError = false;
     bool hasActiveShader = false;
     unsigned int appliedRevision = 0;
@@ -57,7 +57,7 @@ struct ViewerUiState {
     ClippingPlane clippingPlane;
     PointMeasurement measurement;
     MiniShaderEditorState miniShader;
-    std::string statusMessage = "Viewer ready.";
+    std::string statusMessage = "뷰어 준비 완료.";
     bool statusIsError = false;
 };
 

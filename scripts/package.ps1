@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $outputRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot "out"))
-$packageName = "DentalViz-v1.0-submission-windows-x64"
+$packageName = "DentalViz-v1.0.1-korean-windows-x64"
 $stagingRoot = [System.IO.Path]::GetFullPath((Join-Path $outputRoot "package"))
 $packageDirectory = [System.IO.Path]::GetFullPath((Join-Path $stagingRoot $packageName))
 $archivePath = [System.IO.Path]::GetFullPath((Join-Path $outputRoot "$packageName.zip"))

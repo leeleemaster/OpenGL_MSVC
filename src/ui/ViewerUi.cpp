@@ -71,13 +71,13 @@ const char* renderModeName(RenderMode mode) noexcept
 {
     switch (mode) {
     case RenderMode::solid:
-        return "Solid";
+        return "솔리드";
     case RenderMode::wireframe:
-        return "Wireframe";
+        return "와이어프레임";
     case RenderMode::normals:
-        return "Normal Color";
+        return "법선 색상";
     }
-    return "Unknown";
+    return "알 수 없음";
 }
 
 float ViewerRect::aspectRatio() const noexcept
@@ -207,59 +207,60 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             static_cast<double>(state.framesPerSecond));
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
-                "Viewer framebuffer: %d x %d px",
+                "뷰어 프레임버퍼: %d x %d px",
                 viewerRect_.framebufferWidth,
                 viewerRect_.framebufferHeight);
         }
 
-        ImGui::SeparatorText("Model Information");
+        ImGui::SeparatorText("모델 정보");
         ImGui::TextWrapped("%s", state.model.name.c_str());
         ImGui::Text(
-            "Vertices %zu  |  Triangles %zu",
+            "정점 %zu  |  삼각형 %zu",
             state.model.vertexCount,
             state.model.triangleCount);
         const glm::vec3 boundsSize = state.model.bounds.size();
         ImGui::Text(
-            "Bounds      %.2f x %.2f x %.2f",
+            "경계 크기   %.2f x %.2f x %.2f",
             static_cast<double>(boundsSize.x),
             static_cast<double>(boundsSize.y),
             static_cast<double>(boundsSize.z));
-        ImGui::Text("Unit        model units (scale unknown)");
+        ImGui::Text("단위        모델 단위 (원본 배율 미확인)");
         if (state.model.loadedFromFile) {
-            ImGui::Text("Source meshes  %zu", state.model.sourceMeshCount);
-            ImGui::Text("Load time      %.3f ms", state.model.loadMilliseconds);
-            ImGui::TextDisabled("Source");
+            ImGui::Text("원본 메시   %zu", state.model.sourceMeshCount);
+            ImGui::Text("불러오기    %.3f ms", state.model.loadMilliseconds);
+            ImGui::TextDisabled("원본 경로");
             const std::string sourcePath = pathToUtf8(state.model.sourcePath);
             ImGui::TextWrapped("%s", sourcePath.c_str());
         } else {
-            ImGui::TextDisabled("Project-authored test geometry");
+            ImGui::TextDisabled("프로젝트 제작 테스트 형상");
         }
 
-        if (ImGui::Button("Load Model...", ImVec2(-1.0F, 0.0F))) {
+        if (ImGui::Button("모델 불러오기...", ImVec2(-1.0F, 0.0F))) {
             try {
                 actions.modelToLoad = chooseMeshFile();
                 if (!actions.modelToLoad.has_value()) {
-                    state.statusMessage = "Model selection cancelled.";
+                    state.statusMessage = "모델 선택을 취소했습니다.";
                     state.statusIsError = false;
                 }
-            } catch (const std::exception& error) {
-                state.statusMessage = error.what();
+            } catch (const std::exception&) {
+                state.statusMessage =
+                    "파일 선택 창을 열지 못했습니다. 자세한 내용은 콘솔을 확인하세요.";
                 state.statusIsError = true;
             }
         }
 
-        ImGui::SeparatorText("Rendering");
+        ImGui::SeparatorText("렌더링");
         if (ImGui::BeginTable("Rendering controls", 2, ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 105.0F);
-            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("항목", ImGuiTableColumnFlags_WidthFixed, 105.0F);
+            ImGui::TableSetupColumn("값", ImGuiTableColumnFlags_WidthStretch);
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Mode");
+            ImGui::TextUnformatted("모드");
             ImGui::TableSetColumnIndex(1);
             int selectedMode = static_cast<int>(state.renderMode);
-            constexpr const char* renderModes[] = {"Solid", "Wireframe", "Normal Color"};
+            constexpr const char* renderModes[] = {"솔리드", "와이어프레임", "법선 색상"};
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::Combo("##Render mode", &selectedMode, renderModes, 3)) {
                 state.renderMode = static_cast<RenderMode>(selectedMode);
@@ -268,7 +269,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Base color");
+            ImGui::TextUnformatted("기본 색상");
             ImGui::TableSetColumnIndex(1);
             ImGui::SetNextItemWidth(-1.0F);
             ImGui::ColorEdit3(
@@ -279,7 +280,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Light position");
+            ImGui::TextUnformatted("광원 위치");
             ImGui::TableSetColumnIndex(1);
             ImGui::SetNextItemWidth(-1.0F);
             ImGui::DragFloat3(
@@ -288,7 +289,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::AlignTextToFramePadding();
-            ImGui::TextUnformatted("Shininess");
+            ImGui::TextUnformatted("광택");
             ImGui::TableSetColumnIndex(1);
             ImGui::SetNextItemWidth(-1.0F);
             ImGui::SliderFloat(
@@ -300,9 +301,9 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                 ImGuiSliderFlags_Logarithmic);
             ImGui::EndTable();
         }
-        actions.resetCamera = ImGui::Button("Reset Camera", ImVec2(-1.0F, 0.0F));
+        actions.resetCamera = ImGui::Button("카메라 맞춤", ImVec2(-1.0F, 0.0F));
 
-        ImGui::SeparatorText("Status");
+        ImGui::SeparatorText("상태");
         const ImVec4 statusColor = state.statusIsError
             ? ImVec4(1.0F, 0.38F, 0.32F, 1.0F)
             : ImVec4(0.48F, 0.84F, 0.68F, 1.0F);
@@ -310,9 +311,9 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
         ImGui::TextWrapped("%s", state.statusMessage.c_str());
         ImGui::PopStyleColor();
 
-        ImGui::SeparatorText("Tools");
+        ImGui::SeparatorText("도구");
         if (ImGui::BeginTabBar("Viewer tools")) {
-            if (ImGui::BeginTabItem("Measurement")) {
+            if (ImGui::BeginTabItem("거리 측정")) {
                 if (state.measurement.pointA().has_value()) {
                     const RayHit& pointA = state.measurement.pointA().value();
                     ImGui::Text(
@@ -321,7 +322,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                         static_cast<double>(pointA.position.y),
                         static_cast<double>(pointA.position.z));
                 } else {
-                    ImGui::TextDisabled("Select Point A on the model surface.");
+                    ImGui::TextDisabled("모델 표면에서 A점을 선택하세요.");
                 }
                 if (state.measurement.pointB().has_value()) {
                     const RayHit& pointB = state.measurement.pointB().value();
@@ -331,38 +332,38 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                         static_cast<double>(pointB.position.y),
                         static_cast<double>(pointB.position.z));
                 } else if (state.measurement.pointA().has_value()) {
-                    ImGui::TextDisabled("Select Point B on the model surface.");
+                    ImGui::TextDisabled("모델 표면에서 B점을 선택하세요.");
                 }
                 if (const std::optional<float> distance = state.measurement.distance();
                     distance.has_value()) {
                     ImGui::TextColored(
                         ImVec4(0.98F, 0.80F, 0.24F, 1.0F),
-                        "3D 직선거리  %.3f model units",
+                        "3D 직선거리  %.3f 모델 단위",
                         static_cast<double>(distance.value()));
                 }
-                ImGui::TextDisabled("Source scale is not inferred.");
+                ImGui::TextDisabled("원본 배율은 자동으로 추론하지 않습니다.");
                 actions.resetMeasurement =
-                    ImGui::Button("Reset Measurement", ImVec2(-1.0F, 0.0F));
+                    ImGui::Button("거리 측정 초기화", ImVec2(-1.0F, 0.0F));
                 ImGui::EndTabItem();
             }
 
-            if (ImGui::BeginTabItem("Clipping Preview")) {
+            if (ImGui::BeginTabItem("클리핑 미리보기")) {
                 bool clippingEnabled = state.clippingPlane.enabled();
-                if (ImGui::Checkbox("Enable clipping", &clippingEnabled)) {
+                if (ImGui::Checkbox("클리핑 사용", &clippingEnabled)) {
                     state.clippingPlane.setEnabled(clippingEnabled);
                 }
 
                 if (ImGui::BeginTable(
                         "Clipping controls", 2, ImGuiTableFlags_SizingStretchProp)) {
                     ImGui::TableSetupColumn(
-                        "Property", ImGuiTableColumnFlags_WidthFixed, 88.0F);
+                        "항목", ImGuiTableColumnFlags_WidthFixed, 88.0F);
                     ImGui::TableSetupColumn(
-                        "Value", ImGuiTableColumnFlags_WidthStretch);
+                        "값", ImGuiTableColumnFlags_WidthStretch);
 
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted("Normal axis");
+                    ImGui::TextUnformatted("법선 축");
                     ImGui::TableSetColumnIndex(1);
                     int selectedAxis = static_cast<int>(state.clippingPlane.axis());
                     constexpr const char* clipAxes[] = {"+X", "+Y", "+Z"};
@@ -375,7 +376,7 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted("Distance d");
+                    ImGui::TextUnformatted("거리 d");
                     ImGui::TableSetColumnIndex(1);
                     const auto [minimumDistance, maximumDistance] =
                         state.clippingPlane.distanceRange(state.model.bounds);
@@ -394,26 +395,26 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                 }
 
                 ImGui::TextDisabled(
-                    "Model space: dot(p, %s) + d <= 0 kept",
+                    "모델 좌표: dot(p, %s) + d <= 0 영역 유지",
                     clipAxisName(state.clippingPlane.axis()));
-                ImGui::TextWrapped("Preview only: the cut surface is not capped or filled.");
+                ImGui::TextWrapped("미리보기 전용: 절단면 메시나 덮개를 생성하지 않습니다.");
                 actions.resetClippingPlane =
-                    ImGui::Button("Reset Plane", ImVec2(-1.0F, 0.0F));
+                    ImGui::Button("평면 초기화", ImVec2(-1.0F, 0.0F));
                 ImGui::EndTabItem();
             }
 
             if (ImGui::BeginTabItem("MiniShader")) {
                 ImGui::TextWrapped(
-                    "Edit the bounded material language and apply it without restarting the viewer.");
-                ImGui::TextDisabled("Button-driven Runtime Compile & Apply");
-                if (ImGui::Button("Compile & Apply", ImVec2(195.0F, 0.0F))) {
+                    "제한된 재질 언어를 편집하고 뷰어 재시작 없이 적용합니다.");
+                ImGui::TextDisabled("버튼 기반 실행 중 컴파일 및 적용");
+                if (ImGui::Button("컴파일 및 적용", ImVec2(195.0F, 0.0F))) {
                     actions.compileAndApplyMiniShader = true;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Reset Source", ImVec2(-1.0F, 0.0F))) {
+                if (ImGui::Button("소스 초기화", ImVec2(-1.0F, 0.0F))) {
                     state.miniShader.source = defaultMiniShaderSource;
                     state.miniShader.compilerOutput =
-                        "Editor source reset. The current shader is unchanged.";
+                        "편집기 소스를 초기화했습니다. 현재 셰이더는 변경되지 않았습니다.";
                     state.miniShader.outputIsError = false;
                 }
                 ImGui::InputTextMultiline(
@@ -430,15 +431,16 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
                 ImGui::PopStyleColor();
                 if (state.miniShader.hasActiveShader) {
                     ImGui::TextDisabled(
-                        "Active MiniShader revision %u (Last Known Good)",
+                        "적용된 MiniShader 개정 %u (마지막 정상 셰이더)",
                         state.miniShader.appliedRevision);
                 } else {
-                    ImGui::TextDisabled("Active shader: built-in Viewer shader (Last Known Good)");
+                    ImGui::TextDisabled(
+                        "적용된 셰이더: 내장 뷰어 셰이더 (마지막 정상 셰이더)");
                 }
 
-                if (ImGui::CollapsingHeader("Generated GLSL Preview")) {
+                if (ImGui::CollapsingHeader("생성된 GLSL 미리보기")) {
                     if (state.miniShader.generatedGlsl.empty()) {
-                        ImGui::TextDisabled("No GLSL has been generated yet.");
+                        ImGui::TextDisabled("아직 생성된 GLSL이 없습니다.");
                     } else {
                         ImGui::InputTextMultiline(
                             "##Generated GLSL",
@@ -452,9 +454,9 @@ ViewerUiActions ViewerUi::draw(ViewerUiState& state)
             ImGui::EndTabBar();
         }
 
-        ImGui::SeparatorText("Controls");
-        ImGui::TextDisabled("LMB A/B Select | Drag Orbit | MMB Pan");
-        ImGui::TextDisabled("Wheel Zoom | F Fit | 1/2/3 Mode");
+        ImGui::SeparatorText("조작법");
+        ImGui::TextDisabled("왼쪽 클릭: A/B 선택 | 드래그: 회전 | 가운데 드래그: 이동");
+        ImGui::TextDisabled("휠: 확대·축소 | F: 화면 맞춤 | 1/2/3: 모드");
     }
     ImGui::End();
     return actions;

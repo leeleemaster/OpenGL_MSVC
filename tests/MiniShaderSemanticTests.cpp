@@ -71,11 +71,11 @@ TEST_CASE("MiniShader semantic analyzer reports independent name errors in sourc
 
     REQUIRE_FALSE(fixture.semanticResult.succeeded());
     REQUIRE(fixture.semanticResult.diagnostics.size() == 4);
-    CHECK(fixture.semanticResult.diagnostics[0].message == "Use before declaration: later.");
-    CHECK(fixture.semanticResult.diagnostics[1].message == "Unknown identifier: mysteryValue.");
-    CHECK(fixture.semanticResult.diagnostics[2].message == "Duplicate variable: same.");
+    CHECK(fixture.semanticResult.diagnostics[0].message == "선언 전에 사용한 식별자: later.");
+    CHECK(fixture.semanticResult.diagnostics[1].message == "알 수 없는 식별자: mysteryValue.");
+    CHECK(fixture.semanticResult.diagnostics[2].message == "중복 변수: same.");
     CHECK(fixture.semanticResult.diagnostics[3].message ==
-          "Output type mismatch: expected vec3, got float.");
+          "Output 타입 불일치: vec3가 필요하지만 실제 타입은 float입니다.");
     CHECK(fixture.semanticResult.diagnostics[0].location.line == 2);
     CHECK(fixture.semanticResult.diagnostics[3].location.line == 7);
 }
@@ -88,7 +88,7 @@ TEST_CASE("MiniShader semantic analyzer protects built-in symbols", "[minishader
     REQUIRE_FALSE(fixture.semanticResult.succeeded());
     REQUIRE(fixture.semanticResult.diagnostics.size() == 1);
     CHECK(fixture.semanticResult.diagnostics[0].message ==
-          "Cannot redeclare built-in symbol: normal.");
+          "내장 Symbol을 다시 선언할 수 없습니다: normal.");
 }
 
 TEST_CASE("MiniShader semantic analyzer validates function names counts and signatures", "[minishader][semantic]")
@@ -107,13 +107,13 @@ TEST_CASE("MiniShader semantic analyzer validates function names counts and sign
 
     REQUIRE_FALSE(fixture.semanticResult.succeeded());
     REQUIRE(fixture.semanticResult.diagnostics.size() == 4);
-    CHECK(fixture.semanticResult.diagnostics[0].message == "Unknown function: mystery.");
+    CHECK(fixture.semanticResult.diagnostics[0].message == "알 수 없는 함수: mystery.");
     CHECK(fixture.semanticResult.diagnostics[1].message ==
-          "Wrong argument count for dot: expected 2, got 1.");
+          "dot 함수의 인자 개수가 잘못되었습니다: 필요 2개, 입력 1개입니다.");
     CHECK(fixture.semanticResult.diagnostics[2].message ==
-          "Unsupported argument types for max(vec3, vec3).");
+          "지원하지 않는 인자 타입: max(vec3, vec3).");
     CHECK(fixture.semanticResult.diagnostics[3].message ==
-          "Identifier is not callable: scalar.");
+          "호출할 수 없는 식별자: scalar.");
 }
 
 TEST_CASE("MiniShader semantic analyzer rejects unsupported binary operands", "[minishader][semantic]")
@@ -131,11 +131,11 @@ TEST_CASE("MiniShader semantic analyzer rejects unsupported binary operands", "[
     REQUIRE_FALSE(fixture.semanticResult.succeeded());
     REQUIRE(fixture.semanticResult.diagnostics.size() == 3);
     CHECK(fixture.semanticResult.diagnostics[0].message ==
-          "Unsupported operand types for '*': vec3 and vec3.");
+          "연산자 '*'에서 지원하지 않는 타입: vec3, vec3.");
     CHECK(fixture.semanticResult.diagnostics[1].message ==
-          "Unsupported operand types for '+': vec2 and vec3.");
+          "연산자 '+'에서 지원하지 않는 타입: vec2, vec3.");
     CHECK(fixture.semanticResult.diagnostics[2].message ==
-          "Unsupported operand types for '/': float and vec3.");
+          "연산자 '/'에서 지원하지 않는 타입: float, vec3.");
 }
 
 TEST_CASE("MiniShader semantic analyzer accepts the complete binary operator matrix", "[minishader][semantic]")
@@ -174,7 +174,7 @@ TEST_CASE("MiniShader semantic analyzer supports all MVP constructor result type
 
     REQUIRE_FALSE(lexResult.succeeded());
     REQUIRE(lexResult.diagnostics.size() == 1);
-    CHECK(lexResult.diagnostics[0].message == "Unknown character: '.'");
+    CHECK(lexResult.diagnostics[0].message == "알 수 없는 문자: '.'");
 
     AnalysisFixture validFixture = analyzeSource(
         "material Constructors { let uv = vec2(0.0, 1.0); let rgb = vec3(0.0, 0.5, 1.0); "

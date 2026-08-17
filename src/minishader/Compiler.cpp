@@ -23,7 +23,7 @@ CompilationResult Compiler::compile(std::string_view source)
         diagnostics.push_back(Diagnostic{
             DiagnosticPhase::Lexical,
             SourceLocation{},
-            "Source exceeds the 65536-byte safety limit.",
+            "소스가 65,536바이트 안전 제한을 초과했습니다.",
         });
         return CompilationResult{{}, std::move(diagnostics), {}};
     }

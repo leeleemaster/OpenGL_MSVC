@@ -62,7 +62,7 @@ TEST_CASE("MiniShader compiler returns multiple semantic diagnostics without GLS
     CHECK(result.diagnostics[1].phase == DiagnosticPhase::Semantic);
     CHECK(result.diagnostics[2].phase == DiagnosticPhase::Semantic);
     CHECK(result.fragmentSource.empty());
-    CHECK(formatDiagnostics(result.diagnostics).find("line 1, column") != std::string::npos);
+    CHECK(formatDiagnostics(result.diagnostics).find("1행, ") != std::string::npos);
 }
 
 TEST_CASE("MiniShader compiler rejects oversized source before token allocation", "[minishader][compiler][invalid-input]")
@@ -72,7 +72,7 @@ TEST_CASE("MiniShader compiler rejects oversized source before token allocation"
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 1);
     CHECK(result.diagnostics[0].phase == DiagnosticPhase::Lexical);
-    CHECK(result.diagnostics[0].message.find("65536-byte") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("65,536바이트") != std::string::npos);
     CHECK(result.fragmentSource.empty());
 }
 
@@ -89,6 +89,6 @@ TEST_CASE("MiniShader compiler rejects excessive expression nesting", "[minishad
     REQUIRE_FALSE(result.succeeded());
     REQUIRE(result.diagnostics.size() == 1);
     CHECK(result.diagnostics[0].phase == DiagnosticPhase::Syntax);
-    CHECK(result.diagnostics[0].message.find("nesting") != std::string::npos);
+    CHECK(result.diagnostics[0].message.find("중첩") != std::string::npos);
     CHECK(result.fragmentSource.empty());
 }

@@ -1,9 +1,9 @@
-name: Publish v1.0 Submission
+name: Publish v1.0.1 Korean Release
 
 on:
   push:
     tags:
-      - v1.0-submission
+      - v1.0.1-korean
 
 permissions:
   contents: write
@@ -23,11 +23,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
-            output/release/DentalViz-v1.0-submission-windows-x64.zip \
+            output/release/DentalViz-v1.0.1-korean-windows-x64.zip \
             output/pdf/DentalViz_Huvitz_Portfolio.pdf \
             docs/demo/DentalViz-v0.8-portfolio-demo.mp4 \
             output/release/SHA256SUMS.txt \
             --verify-tag \
             --latest \
-            --title "DentalViz v1.0 제출 패키지" \
-            --notes-file .github/release-notes-v1.0.md
+            --title "DentalViz v1.0.1 한국어판" \
+            --notes-file .github/release-notes-v1.0.1.md

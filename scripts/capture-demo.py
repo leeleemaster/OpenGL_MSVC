@@ -9,7 +9,7 @@ import time
 
 import cv2
 import numpy as np
-from PIL import ImageGrab
+from PIL import Image, ImageDraw, ImageFont, ImageGrab
 
 
 WM_CLOSE = 0x0010
@@ -32,6 +32,7 @@ VK_A = 0x41
 
 user32 = ctypes.windll.user32
 user32.SetProcessDPIAware()
+CAPTION_FONT = ImageFont.truetype("C:/Windows/Fonts/malgunbd.ttf", 22)
 
 
 class Point(ctypes.Structure):
@@ -230,32 +231,32 @@ def caption_for_time(elapsed: float) -> str:
     if elapsed < 4.0:
         return "DentalViz | C++20 + OpenGL 3.3 Core"
     if elapsed < 10.0:
-        return "Orbit camera keeps the dental mesh centered"
+        return "회전 카메라가 치과 메시를 화면 중심에 유지"
     if elapsed < 16.0:
-        return "Pan and zoom use the same DPI-aware viewer coordinates"
+        return "이동과 확대·축소에 같은 DPI 독립 뷰어 좌표 사용"
     if elapsed < 18.0:
-        return "F restores a bounds-based fitted view"
+        return "F 키로 경계 기반 화면 맞춤"
     if elapsed < 22.0:
-        return "Wireframe exposes the indexed triangle topology"
+        return "와이어프레임으로 인덱스 삼각형 구조 확인"
     if elapsed < 26.0:
-        return "Normal Color validates surface orientation"
+        return "법선 색상으로 표면 방향 확인"
     if elapsed < 30.0:
-        return "Blinn-Phong solid rendering"
+        return "Blinn-Phong 솔리드 렌더링"
     if elapsed < 34.0:
-        return "Ray picking selects the closest mesh triangle"
+        return "광선 피킹으로 가장 가까운 메시 삼각형 선택"
     if elapsed < 39.0:
-        return "Two surface points produce a 3D straight-line distance"
+        return "표면점 두 개로 3D 직선거리 측정"
     if elapsed < 45.0:
-        return "Model-space Clipping Preview updates immediately"
+        return "모델 좌표 클리핑 미리보기를 즉시 갱신"
     if elapsed < 50.0:
-        return "Camera movement does not move the clipping plane"
+        return "카메라가 움직여도 클리핑 평면은 모델에 고정"
     if elapsed < 57.0:
-        return "MiniShader compiles a bounded material source at runtime"
+        return "MiniShader가 제한된 재질 소스를 실행 중 컴파일"
     if elapsed < 66.0:
-        return "Edit one expression, then explicitly Compile & Apply"
+        return "표현식 편집 후 명시적으로 컴파일하고 적용"
     if elapsed < 75.0:
-        return "Invalid source reports an error; Last Known Good stays active"
-    return "Context-free compiler core | Move-only OpenGL resources | 63 tests"
+        return "잘못된 소스는 오류 표시, 마지막 정상 셰이더는 유지"
+    return "독립 컴파일러 핵심부 | 이동 전용 OpenGL 자원 | 테스트 63개"
 
 
 def add_caption(frame: np.ndarray, caption: str) -> np.ndarray:
@@ -264,17 +265,15 @@ def add_caption(frame: np.ndarray, caption: str) -> np.ndarray:
     top = height - 58
     cv2.rectangle(overlay, (0, top), (width, height), (4, 12, 16), -1)
     cv2.addWeighted(overlay, 0.82, frame, 0.18, 0.0, frame)
-    cv2.putText(
-        frame,
+    caption_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(caption_image)
+    draw.text(
+        (24, height - 45),
         caption,
-        (24, height - 21),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.72,
-        (224, 246, 248),
-        2,
-        cv2.LINE_AA,
+        font=CAPTION_FONT,
+        fill=(224, 246, 248),
     )
-    return frame
+    return cv2.cvtColor(np.asarray(caption_image), cv2.COLOR_RGB2BGR)
 
 
 def capture_demo(executable: Path, output_path: Path) -> None:
@@ -288,6 +287,8 @@ def capture_demo(executable: Path, output_path: Path) -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     writer: cv2.VideoWriter | None = None
     try:
@@ -327,16 +328,16 @@ def capture_demo(executable: Path, output_path: Path) -> None:
             (26.0, "solid", lambda: key_press(window, 0x31)),
             (30.0, "point_a", lambda: click(window, 830, 250)),
             (34.0, "point_b", lambda: click(window, 860, 450)),
-            (39.0, "reset_measurement", lambda: click(window, 190, 604)),
-            (39.5, "clipping_tab", lambda: click(window, 172, 485)),
-            (39.8, "clipping_tab_again", lambda: click(window, 172, 485)),
+            (39.0, "reset_measurement", lambda: click(window, 190, 620)),
+            (39.5, "clipping_tab", lambda: click(window, 155, 480)),
+            (39.8, "clipping_tab_again", lambda: click(window, 155, 480)),
             (40.3, "enable_clipping", lambda: click(window, 31, 517)),
             (42.0, "clip_distance", lambda: click(window, 255, 581)),
             (49.0, "disable_clipping", lambda: click(window, 31, 517)),
             (49.4, "fit_after_clipping", lambda: key_press(window, 0x46)),
-            (50.0, "minishader_tab", lambda: click(window, 277, 485)),
-            (50.8, "minishader_tab_again", lambda: click(window, 270, 485)),
-            (51.6, "minishader_tab_final", lambda: click(window, 270, 485)),
+            (50.0, "minishader_tab", lambda: click(window, 245, 480)),
+            (50.8, "minishader_tab_again", lambda: click(window, 245, 480)),
+            (51.6, "minishader_tab_final", lambda: click(window, 245, 480)),
             (52.8, "default_compile", lambda: click(window, 110, 570)),
             (
                 58.0,
@@ -442,12 +443,12 @@ def capture_demo(executable: Path, output_path: Path) -> None:
     if viewer_process.returncode != 0:
         raise RuntimeError(f"DentalViz exited with code {viewer_process.returncode}.")
     standard_output, standard_error = viewer_process.communicate()
-    success_count = standard_output.count("MiniShader revision")
+    success_count = standard_output.count("MiniShader 개정")
     if success_count != 2:
         raise RuntimeError(
             f"Expected two successful MiniShader applies, found {success_count}."
         )
-    if "Unknown identifier: missing." not in standard_error:
+    if "알 수 없는 식별자: missing." not in standard_error:
         raise RuntimeError("The invalid MiniShader source did not report its semantic error.")
     print(f"Demo: {output_path}")
     print(f"Duration: {duration_seconds:.0f} seconds")
