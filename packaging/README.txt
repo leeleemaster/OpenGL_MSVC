@@ -1,5 +1,5 @@
-DentalViz v0.8 MiniShader — Windows x64
-======================================
+DentalViz v1.0 Submission - Windows x64
+=======================================
 
 DentalViz is a C++20/OpenGL 3.3 desktop viewer for exploring and measuring
 triangle meshes. This package includes the stable P0 viewer and the optional

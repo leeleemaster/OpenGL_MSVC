@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 project(
     DentalViz
-    VERSION 0.8.0
+    VERSION 1.0.0
     DESCRIPTION "C++ dental mesh visualization and geometry interaction"
     LANGUAGES CXX
 )

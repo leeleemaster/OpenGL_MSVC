@@ -3,14 +3,14 @@
 **C++ Dental 3D Visualization with MiniShader Runtime**
 
 [![Windows Build](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml/badge.svg?branch=main)](https://github.com/leeleemaster/OpenGL_MSVC/actions/workflows/windows-build.yml)
-[![MiniShader milestone](https://img.shields.io/badge/milestone-v0.8--minishader-0b7d87)](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
+[![Submission v1.0](https://img.shields.io/badge/release-v1.0--submission-0b7d87)](https://github.com/leeleemaster/OpenGL_MSVC/releases/tag/v1.0-submission)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [▶ 84초 최종 실행 Demo](docs/demo/DentalViz-v0.8-portfolio-demo.mp4) ·
 [Portfolio PDF](output/pdf/DentalViz_Huvitz_Portfolio.pdf) ·
 [Architecture](docs/architecture.md) ·
 [Performance](docs/performance/benchmark-summary.md) ·
-[v0.8 Source Tag](https://github.com/leeleemaster/OpenGL_MSVC/tree/v0.8-minishader)
+[v1.0 Source Tag](https://github.com/leeleemaster/OpenGL_MSVC/tree/v1.0-submission)
 
 ![DentalViz wireframe, normal visualization, picking, and measurement preview](docs/demo/DentalViz-readme-preview.gif)
 
@@ -105,8 +105,9 @@ Microsoft `C/C++` 및 `CMake Tools` 확장이 설치된 VS Code에서 저장소�
 ./out/build/msvc/Debug/DentalViz.exe --model "C:\Models\dental.stl"
 ```
 
-Windows ZIP은 Shader와 제3자 고지를 포함해 `out/`에 생성됩니다. 공개 다운로드는 최종
-`v1.0-submission` Release에서 고정하며, 현재 패키지는 아래 명령으로 재현할 수 있습니다.
+Windows ZIP은 Shader와 제3자 고지를 포함해 `out/`에 생성됩니다. 공개 다운로드는
+[`v1.0-submission` Release](https://github.com/leeleemaster/OpenGL_MSVC/releases/tag/v1.0-submission)에서
+제공하며, 아래 명령으로 동일한 구조를 재현할 수 있습니다.
 
 ```powershell
 ./scripts/package.ps1 -Configuration Release
